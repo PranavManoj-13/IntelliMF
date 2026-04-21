@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}SIP Cart | IntelliMF{% endblock %}
+{% block content %}
+<section class="order-page-header">
+  <div class="order-page-header-content">
+    <div>
+      <p class="eyebrow">Admin</p>
+      <h1>SIP Cart</h1>
+      <p class="muted">Review the selected funds, assign them to one investor ID, and store the order.</p>
+    </div>
+    <a class="card-action" href="{{ url_for('admin_orders') }}">Back to Fund Search</a>
+  </div>
+</section>
+
+<section class="cart-page-grid">
+  <div class="panel order-builder">
+    <div class="order-builder-banner">
+      <div>
+        <strong>Investor Basket</strong>
+        <p>Each fund keeps its own monthly SIP budget, frequency, and start date. Add more funds from the search page whenever you need.</p>
+      </div>
+      <span id="cart-count-pill" class="order-count">0 funds</span>
+    </div>
+
+    <form id="sip-order-form" class="stack-form" action="{{ url_for('admin_cart') }}" method="post">
+      <label class="investor-label">
+        Investor ID
+        <input type="text" name="investor_id" required placeholder="Enter investor ID">
+      </label>
+
+      <div class="cart-shell">
+        <div class="cart-header">
+          <h2>Your Cart</h2>
+          <span id="cart-count" class="cart-count">0 funds</span>
+        </div>
+        <div id="cart-items" class="cart-items">
+          <div class="empty-cart" id="empty-cart">
+            <p>No funds added yet.</p>
+            <p class="muted">Visit fund search, use the popup, and your basket will appear here.</p>
+          </div>
+        </div>
+        <p class="cart-footnote">The monthly amount stays fixed per month. Weekly and bi-weekly SIPs are split across execution dates in that month.</p>
+      </div>
+
+      <div class="cart-summary">
+        <div class="summary-row">
+          <span>Total SIP Budget</span>
+          <strong id="cart-total">₹0</strong>
+        </div>
+      </div>
+
+      <div class="cart-page-actions">
+        <button type="submit" class="primary-button">Create SIP Order</button>
+        <button type="button" id="clear-cart-button" class="secondary-button">Clear Cart</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-heading">
+      <h2>Stored SIP Orders</h2>
+      <p>All survey-collected SIP orders currently stored in the database.</p>
+    </div>
+    {% if orders %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Investor ID</th>
+              <th>Scheme</th>
+              <th>Amount</th>
+              <th>Frequency</th>
+              <th>Start Date</th>
+              <th>Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in orders %}
+              <tr>
+                <td>{{ row.investor_name }}</td>
+                <td>{{ row.scheme_name }} ({{ row.scheme_code }})</td>
+                <td>{{ row.amount }}</td>
+                <td>{{ row.frequency }}</td>
+                <td>{{ row.start_date }}</td>
+                <td>{{ row.created_at }}</td>
+                <td>
+                  <form action="{{ url_for('admin_delete_order', order_id=row.id) }}" method="post">
+                    <button type="submit" class="ghost-button compact-button">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">No SIP orders stored yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.adminCartConfig = {
+    clearCart: {{ clear_cart|tojson }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/admin-cart.js') }}"></script>
+{% endblock %}

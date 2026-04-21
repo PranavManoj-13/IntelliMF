@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Fund Metadata | IntelliMF{% endblock %}
+{% block content %}
+<section class="section-header">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Add MF Metadata</h1>
+    <p class="muted">Search any fund, update its metadata, and review all saved metadata below.</p>
+  </div>
+</section>
+
+<section class="panel" id="fund-metadata">
+  <div class="panel-heading">
+    <h2>Add Or Edit Fund Metadata</h2>
+    <p>Search any fund and save metadata that will appear on the public fund page.</p>
+  </div>
+  <form class="search-form compact" action="{{ url_for('admin_metadata') }}" method="get">
+    <input type="text" name="meta_query" value="{{ meta_query }}" placeholder="Search any fund by name or scheme code">
+    <button type="submit">Search Funds</button>
+  </form>
+
+  {% if metadata_search_results %}
+    <div class="admin-results metadata-search-results">
+      {% for scheme in metadata_search_results %}
+        <a class="checkbox-card search-result-card" href="{{ url_for('admin_metadata', meta_query=meta_query, meta_scheme_code=scheme.scheme_code) }}">
+          <div class="search-result-copy">
+            <strong>{{ scheme.scheme_name }}</strong>
+            <small>Scheme Code: {{ scheme.scheme_code }}</small>
+          </div>
+          <span class="secondary-button metadata-edit-pill">Edit Metadata</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% elif meta_query %}
+    <p class="muted">No funds matched that metadata search.</p>
+  {% endif %}
+
+  {% if selected_metadata_scheme %}
+    <form class="metadata-editor" action="{{ url_for('admin_metadata', meta_query=meta_query, meta_scheme_code=selected_metadata_scheme.scheme_code) }}" method="post">
+      <input type="hidden" name="scheme_code" value="{{ selected_metadata_scheme.scheme_code }}">
+      <input type="hidden" name="scheme_name" value="{{ selected_metadata_scheme.scheme_name }}">
+      <div class="panel-heading compact-heading">
+        <h2>{{ selected_metadata_scheme.scheme_name }}</h2>
+        <p>Scheme Code: {{ selected_metadata_scheme.scheme_code }}</p>
+      </div>
+      <div class="metadata-form-grid">
+        <label>
+          Fund Manager
+          <input type="text" name="fund_manager" value="{{ selected_metadata_details.fund_manager if selected_metadata_details else '' }}">
+        </label>
+        <label>
+          AUM (in crores)
+          <input type="number" name="aum" min="0" step="0.01" value="{{ selected_metadata_details.aum if selected_metadata_details else '' }}">
+        </label>
+        <label>
+          Lock-In Period
+          <input type="text" name="lock_in_period" value="{{ selected_metadata_details.lock_in_period if selected_metadata_details else '' }}">
+        </label>
+        <label>
+          Expense Ratio
+          <input type="number" name="expense_ratio" min="0" step="0.01" value="{{ selected_metadata_details.expense_ratio if selected_metadata_details else '' }}">
+        </label>
+        <label>
+          Risk Level
+          <input type="text" name="risk_level" value="{{ selected_metadata_details.risk_level if selected_metadata_details else '' }}">
+        </label>
+        <label class="full-span">
+          Notes
+          <input type="text" name="notes" value="{{ selected_metadata_details.notes if selected_metadata_details else '' }}">
+        </label>
+      </div>
+      <button type="submit">Save Metadata</button>
+    </form>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-heading">
+    <h2>Manage Fund Metadata</h2>
+    <p>Review and edit fund manager, AUM, lock-in period, expense ratio, risk level, and notes for any fund you have enriched.</p>
+  </div>
+  {% if fund_metadata_rows %}
+    <div class="metadata-table">
+      {% for row in fund_metadata_rows %}
+        <form class="metadata-row" action="{{ url_for('admin_metadata', meta_scheme_code=row.scheme_code) }}" method="post">
+          <input type="hidden" name="scheme_code" value="{{ row.scheme_code }}">
+          <input type="hidden" name="scheme_name" value="{{ row.scheme_name }}">
+          <div class="metadata-title">
+            <strong>{{ row.scheme_name }}</strong>
+            <small>Scheme Code: {{ row.scheme_code }}</small>
+          </div>
+          <label>
+            Fund Manager
+            <input type="text" name="fund_manager" value="{{ row.fund_manager or '' }}">
+          </label>
+          <label>
+            AUM (in crores)
+            <input type="number" name="aum" min="0" step="0.01" value="{{ row.aum or '' }}">
+          </label>
+          <label>
+            Lock-In Period
+            <input type="text" name="lock_in_period" value="{{ row.lock_in_period or '' }}">
+          </label>
+          <label>
+            Expense Ratio
+            <input type="number" name="expense_ratio" min="0" step="0.01" value="{{ row.expense_ratio or '' }}">
+          </label>
+          <label>
+            Risk Level
+            <input type="text" name="risk_level" value="{{ row.risk_level or '' }}">
+          </label>
+          <label class="metadata-notes">
+            Notes
+            <input type="text" name="notes" value="{{ row.notes or '' }}">
+          </label>
+          <button type="submit" class="secondary-button">Save Metadata</button>
+        </form>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">No fund metadata has been added yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin-metadata.js') }}"></script>
+{% endblock %}

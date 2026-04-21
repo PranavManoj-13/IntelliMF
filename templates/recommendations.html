@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Recommendations | IntelliMF{% endblock %}
+{% block content %}
+<section class="section-header">
+  <div>
+    <p class="eyebrow">Frequent Itemset Mining</p>
+    <h1>Frequently Bought Together</h1>
+    <p class="muted">Built from stored admin SIP orders using FP-Growth.</p>
+  </div>
+  <div class="metric-card compact-card">
+    <span class="metric-label">Investor baskets</span>
+    <strong>{{ basket_count }}</strong>
+  </div>
+</section>
+
+<section class="metric-grid recommendation-metrics">
+  <div class="metric-card">
+    <span class="metric-label">Frequent Itemsets</span>
+    <strong>{{ itemsets|length }}</strong>
+    <p>Patterns currently mined from stored investor baskets.</p>
+  </div>
+  <div class="metric-card">
+    <span class="metric-label">Association Rules</span>
+    <strong>{{ rules|length }}</strong>
+    <p>Rules that suggest what funds are often selected together.</p>
+  </div>
+  <div class="metric-card accent-card">
+    <span class="metric-label">Model</span>
+    <strong>FP-Growth</strong>
+    <p>Recommendations update as more survey SIP orders are stored, with support requiring repeat patterns across investor baskets.</p>
+  </div>
+</section>
+
+<section class="page-grid recommendation-grid">
+  <div class="panel">
+    <div class="panel-heading">
+      <h2>Frequent Itemsets</h2>
+      <p>Common combinations of mutual funds seen together.</p>
+    </div>
+    {% if itemsets %}
+      <div class="table-wrap">
+        <table class="data-table numeric-last-column">
+          <thead>
+            <tr>
+              <th>Itemsets</th>
+              <th>Support</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in itemsets %}
+              <tr>
+                <td>{{ row.itemsets }}</td>
+                <td>{{ row.support }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Not enough repeated basket history yet to generate reliable frequent itemsets.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <div class="panel-heading">
+      <h2>Association Rules</h2>
+      <p>Rules that suggest what funds are often purchased together.</p>
+    </div>
+    {% if rules %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>If investor has</th>
+              <th>Then also has</th>
+              <th>Confidence</th>
+              <th>Lift</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rules %}
+              <tr>
+                <td>{{ row.antecedents }}</td>
+                <td>{{ row.consequents }}</td>
+                <td>{{ row.confidence }}</td>
+                <td>{{ row.lift }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Rules will appear once the same fund combinations occur across multiple investor baskets.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

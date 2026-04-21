@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Add Admin | IntelliMF{% endblock %}
+{% block content %}
+<section class="section-header">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Add Admin</h1>
+    <p class="muted">Create another admin account with its own username and password.</p>
+  </div>
+</section>
+
+<section class="panel narrow-panel">
+  <div class="panel-heading">
+    <h2>Create New Admin</h2>
+    <p>The new admin will be able to log in separately and access all admin pages.</p>
+  </div>
+  <form class="stack-form" action="{{ url_for('admin_users') }}" method="post">
+    <label>
+      New Admin Username
+      <input type="text" name="new_admin_username" required>
+    </label>
+    <label>
+      New Admin Password
+      <input type="password" name="new_admin_password" minlength="6" required>
+    </label>
+    <label>
+      Confirm New Admin Password
+      <input type="password" name="confirm_new_admin_password" minlength="6" required>
+    </label>
+    <button type="submit">Create Admin</button>
+  </form>
+</section>
+{% endblock %}

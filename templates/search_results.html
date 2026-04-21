@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Search Results | IntelliMF{% endblock %}
+{% block content %}
+<section class="section-header">
+  <div>
+    <p class="eyebrow">Fund Search</p>
+    <h1>Search results for "{{ query }}"</h1>
+    <p class="muted">{{ total_results }} matching funds found.</p>
+  </div>
+  <form class="search-form compact" action="{{ url_for('search') }}" method="get">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search again">
+    <button type="submit">Search</button>
+  </form>
+</section>
+
+{% if schemes %}
+  <section class="results-grid">
+    {% for scheme in schemes %}
+      <article class="result-card">
+        <h2>{{ scheme.scheme_name }}</h2>
+        <p class="code-chip">Scheme Code: {{ scheme.scheme_code }}</p>
+        <a class="card-action" href="{{ url_for('fund_detail', scheme_code=scheme.scheme_code) }}">Open fund details</a>
+      </article>
+    {% endfor %}
+  </section>
+{% else %}
+  <section class="empty-state">
+    <h2>No matching funds found</h2>
+    <p>Try a broader keyword such as AMC name, category, or index family.</p>
+  </section>
+{% endif %}
+{% endblock %}

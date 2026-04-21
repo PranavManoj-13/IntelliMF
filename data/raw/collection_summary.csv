@@ -1,0 +1,4 @@
+category,scheme_code,scheme_name,fund_house,records,data_quality_issues,file
+Large Cap,108467,ICICI Prudential Bluechip Fund - Institutional Option - I - Growth,ICICI Prudential Mutual Fund,2926,0,data/raw/scheme_108467.csv
+Index,100822,UTI Nifty 50 Index Fund - Regular Plan - Growth Option,UTI Mutual Fund,4885,0,data/raw/scheme_100822.csv
+Index,100823,UTI Nifty 50 Index Fund - Regular Plan - IDCW,UTI Mutual Fund,4885,0,data/raw/scheme_100823.csv

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Create SIP Order | IntelliMF{% endblock %}
+{% block content %}
+<section class="order-page-header">
+  <div class="order-page-header-content">
+    <div>
+      <p class="eyebrow">Admin</p>
+      <h1>Create SIP Order</h1>
+      <p class="muted">Search and select mutual funds to build an investor's SIP basket.</p>
+    </div>
+    <a class="cart-link" href="{{ url_for('admin_cart') }}" aria-label="Open SIP cart">
+      <span class="cart-link-icon" aria-hidden="true">🛒</span>
+      <span>SIP Cart</span>
+      <span id="cart-link-count" class="cart-link-count">0</span>
+    </a>
+  </div>
+</section>
+
+<section class="order-content admin-search-stack">
+    <div class="search-section">
+      <form class="search-form" action="{{ url_for('admin_orders') }}" method="get">
+        <input type="text" name="fund_query" value="{{ fund_query }}" placeholder="Search by fund name or scheme code">
+        <button type="submit">Search Funds</button>
+      </form>
+    </div>
+
+    {% if search_results %}
+      <div class="funds-grid">
+        {% for scheme in search_results %}
+          <article class="fund-card">
+            <div class="fund-card-content">
+              <h3>{{ scheme.scheme_name }}</h3>
+              <p class="fund-code">Scheme Code: {{ scheme.scheme_code }}</p>
+            </div>
+            <button
+              type="button"
+              class="add-to-cart-btn primary-button"
+              data-scheme-code="{{ scheme.scheme_code }}"
+              data-scheme-name="{{ scheme.scheme_name }}"
+            >
+              Add to Cart
+            </button>
+          </article>
+        {% endfor %}
+      </div>
+    {% elif fund_query %}
+      <div class="no-results">
+        <p class="muted">No funds matched your search. Try a different keyword.</p>
+      </div>
+    {% else %}
+      <div class="search-prompt">
+        <p class="muted">Enter a search term above to find mutual funds.</p>
+      </div>
+    {% endif %}
+</section>
+
+<div id="add-cart-modal" class="modal" aria-hidden="true">
+  <div class="modal-dialog" role="dialog" aria-labelledby="add-modal-title" aria-describedby="add-modal-description">
+    <div class="modal-header">
+      <div>
+        <h3 id="add-modal-title">Add SIP details</h3>
+        <p id="add-modal-description" class="muted">Configure the SIP amount, frequency, and start date for this fund.</p>
+      </div>
+      <button type="button" id="add-modal-close-button" class="modal-close" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <p><strong id="add-modal-scheme-name">Scheme name</strong></p>
+      <p><small id="add-modal-scheme-code">Scheme Code</small></p>
+      <div class="modal-field-grid">
+        <label>
+          Monthly SIP Budget
+          <input type="number" id="add-modal-amount" min="100" step="100" value="5000">
+        </label>
+        <label>
+          Frequency
+          <select id="add-modal-frequency">
+            <option value="Daily">Daily</option>
+            <option value="Weekly">Weekly</option>
+            <option value="Bi-Weekly">Bi-Weekly</option>
+            <option value="Monthly" selected>Monthly</option>
+          </select>
+        </label>
+        <label>
+          Start Date
+          <input type="date" id="add-modal-start-date">
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" id="add-modal-save-button">Add to Cart</button>
+      <button type="button" id="add-modal-cancel-button" class="ghost-button compact-button">Cancel</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/admin-cart.js') }}"></script>
+{% endblock %}

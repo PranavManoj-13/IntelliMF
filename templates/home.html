@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Home | IntelliMF{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">MFAPI-powered analytics</p>
+    <h1>Search mutual funds, simulate SIPs, and discover investor patterns.</h1>
+    <p class="hero-text">
+      Search all available schemes, inspect NAV history, compare SIP frequencies,
+      and explore funds that are frequently bought together.
+    </p>
+    <form class="search-form" action="{{ url_for('search') }}" method="get">
+      <input type="text" name="q" placeholder="Search by fund name, AMC, category, or scheme code" autocomplete="off">
+      <button type="submit">Search Funds</button>
+    </form>
+    <p class="search-hint">{{ total_schemes }} schemes available in the current cache.</p>
+  </div>
+  <div class="hero-panel">
+    <div class="metric-card">
+      <span class="metric-label">Use Cases</span>
+      <strong>Fund research</strong>
+      <p>NAV trends, trailing returns, and scheme-level detail pages.</p>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Planning</span>
+      <strong>SIP simulation</strong>
+      <p>Daily valuation uses actual historical NAV and cumulative units held.</p>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Insights</span>
+      <strong>FP-Growth</strong>
+      <p>Discover which mutual funds are often purchased together by investors.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

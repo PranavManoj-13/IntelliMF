@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard | IntelliMF{% endblock %}
+{% block content %}
+<section class="section-header">
+  <div>
+    <p class="eyebrow">Admin Dashboard</p>
+    <h1>Admin Workspace</h1>
+    <p class="muted">Choose what you want to manage.</p>
+  </div>
+</section>
+
+<section class="quick-actions">
+  <a class="action-card" href="{{ url_for('admin_orders') }}">
+    <strong>Create SIP Order</strong>
+    <span>Search funds, add them to the cart, and build a SIP order for one investor ID.</span>
+  </a>
+  <a class="action-card" href="{{ url_for('admin_password') }}">
+    <strong>Change Password</strong>
+    <span>Update your current admin password.</span>
+  </a>
+  <a class="action-card" href="{{ url_for('admin_users') }}">
+    <strong>Add Admin</strong>
+    <span>Create a new admin user with a separate login.</span>
+  </a>
+  <a class="action-card" href="{{ url_for('admin_metadata') }}">
+    <strong>Add MF Metadata</strong>
+    <span>Search any fund and maintain metadata shown on the fund page.</span>
+  </a>
+</section>
+{% endblock %}

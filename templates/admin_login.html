@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Admin Login | IntelliMF{% endblock %}
+{% block content %}
+<section class="auth-page auth-page-compact">
+  <div class="auth-card">
+    <div class="panel-heading">
+      <p class="eyebrow">Admin Access</p>
+      <h1>Log in to manage SIP orders</h1>
+      <p class="muted">Use your admin credentials to access the dashboard. Change the password later from Admin Controls.</p>
+    </div>
+    <form class="stack-form" action="{{ url_for('admin_login') }}" method="post">
+      <label>
+        Username
+        <input type="text" name="username" required>
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" required>
+      </label>
+      <button type="submit">Login</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

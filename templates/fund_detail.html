@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}{{ details.scheme_name }} | IntelliMF{% endblock %}
+{% block content %}
+<section class="section-header">
+  <div>
+    <p class="eyebrow">Fund Detail</p>
+    <h1>{{ details.scheme_name }}</h1>
+    <p class="muted">{{ details.fund_house }} | {{ details.scheme_type }} | {{ details.scheme_category }}</p>
+  </div>
+  <a class="inline-link" href="{{ url_for('search', q=details.scheme_name) }}">Back to search results</a>
+</section>
+
+<section class="metric-grid">
+  <div class="metric-card">
+    <span class="metric-label">Current NAV</span>
+    <strong>{{ "%.4f"|format(details.current_nav) }}</strong>
+    <p>Latest MFAPI NAV: {{ details.current_date.strftime("%d %b %Y") }}</p>
+  </div>
+  <div class="metric-card">
+    <span class="metric-label">Scheme Code</span>
+    <strong>{{ details.scheme_code }}</strong>
+    <p>Coverage extends to {{ details.coverage_date.strftime("%d %b %Y") }} for charting and SIP continuity.</p>
+  </div>
+  <div class="metric-card accent-card">
+    <span class="metric-label">Optimal SIP Frequency</span>
+    <strong>{{ recommendation.best_frequency }}</strong>
+    <p>{{ recommendation.assumption }}</p>
+  </div>
+</section>
+
+<section class="page-grid detail-grid">
+  <div class="panel">
+    <div class="panel-heading">
+      <h2>NAV History</h2>
+      <p>Historical net asset value from MFAPI.</p>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="navChart"></canvas>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-heading">
+      <h2>Trailing Returns</h2>
+      <p>Point-to-point returns based on actual MFAPI NAV history.</p>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Return (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in trailing_returns %}
+            <tr>
+              <td>{{ row.period }}</td>
+              <td>{{ row.return_pct }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+{% if admin_fund_details and (admin_fund_details.fund_manager or admin_fund_details.aum or admin_fund_details.lock_in_period or admin_fund_details.expense_ratio or admin_fund_details.risk_level or admin_fund_details.notes) %}
+<section class="panel fund-details-panel">
+  <div class="panel-heading">
+    <h2>Fund Details</h2>
+    <p>Additional information entered from survey or internal research.</p>
+  </div>
+  <div class="metric-grid fund-details-grid">
+    <div class="metric-card">
+      <span class="metric-label">Fund Manager</span>
+      <strong>{{ admin_fund_details.fund_manager or "Not added" }}</strong>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">AUM (in crores)</span>
+      <strong>{{ admin_fund_details.aum or "Not added" }}</strong>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Lock-In Period</span>
+      <strong>{{ admin_fund_details.lock_in_period or "Not added" }}</strong>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Expense Ratio</span>
+      <strong>{{ admin_fund_details.expense_ratio or "Not added" }}</strong>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Risk Level</span>
+      <strong>{{ admin_fund_details.risk_level or "Not added" }}</strong>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Notes</span>
+      <strong class="fund-notes">{{ admin_fund_details.notes or "Not added" }}</strong>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel detail-stack">
+  <div class="panel-heading">
+    <h2>SIP Simulator</h2>
+    <p>The entered amount is treated as your total monthly SIP budget. If you choose weekly or bi-weekly, that monthly amount is split across the SIP dates in each month. Portfolio value is recalculated using daily NAV.</p>
+  </div>
+
+  <form class="controls-grid" action="{{ url_for('fund_detail', scheme_code=details.scheme_code) }}" method="get">
+    <label>
+      Monthly SIP Budget
+      <input type="number" name="amount" min="100" step="100" value="{{ selected_amount }}">
+    </label>
+    <label>
+      SIP Frequency
+      <select name="frequency">
+        {% for frequency in ["Daily", "Weekly", "Bi-Weekly", "Monthly"] %}
+          <option value="{{ frequency }}" {% if selected_frequency == frequency %}selected{% endif %}>{{ frequency }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Start Date
+      <input type="date" name="start_date" min="{{ min_date }}" max="{{ max_date }}" value="{{ selected_start }}">
+    </label>
+    <label>
+      End Date
+      <input type="date" name="end_date" min="{{ min_date }}" max="{{ max_date }}" value="{{ selected_end }}">
+    </label>
+    <button type="submit">Recalculate SIP</button>
+  </form>
+
+  <div class="metric-grid">
+    <div class="metric-card">
+      <span class="metric-label">Invested</span>
+      <strong>{{ sip_result.summary.total_invested }}</strong>
+      <p>{{ sip_result.summary.installments }} installments</p>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Current Value</span>
+      <strong>{{ sip_result.summary.current_value }}</strong>
+      <p>Daily NAV x cumulative units</p>
+    </div>
+    <div class="metric-card">
+      <span class="metric-label">Return (%)</span>
+      <strong>{{ sip_result.summary.return_pct }}</strong>
+      <p>Absolute return: {{ sip_result.summary.absolute_return }}</p>
+    </div>
+  </div>
+
+  <div class="analysis-grid">
+    <div class="panel inset-panel">
+      <div class="panel-heading">
+        <h2>SIP Value vs Invested Amount</h2>
+        <p>Daily portfolio valuation after each SIP execution.</p>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="sipChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel inset-panel">
+      <div class="panel-heading">
+        <h2>Frequency Comparison</h2>
+        <p>Default comparison across all SIP frequencies for this period.</p>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Frequency</th>
+              <th>Invested</th>
+              <th>Current Value</th>
+              <th>Return (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in recommendation.comparisons %}
+              <tr {% if row.frequency == recommendation.best_frequency %}class="best-row"{% endif %}>
+                <td>{{ row.frequency }}</td>
+                <td>{{ row.total_invested }}</td>
+                <td>{{ row.current_value }}</td>
+                <td>{{ row.return_pct }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel inset-panel">
+    <div class="panel-heading">
+      <h2>Investment Executions</h2>
+      <p>Scheduled date vs actual execution date aligned to next available NAV.</p>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Scheduled</th>
+            <th>Executed</th>
+            <th>Month</th>
+            <th>NAV</th>
+            <th>Amount</th>
+            <th>Units Bought</th>
+            <th>Cumulative Units</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in sip_result.investments %}
+            <tr>
+              <td>{{ row.scheduled_date }}</td>
+              <td>{{ row.execution_date }}</td>
+              <td>{{ row.month_bucket }}</td>
+              <td>{{ row.nav }}</td>
+              <td>{{ row.investment_amount }}</td>
+              <td>{{ row.units_bought }}</td>
+              <td>{{ row.cumulative_units }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.MFCharts = {
+    navChart: {{ nav_chart|tojson }},
+    sipSeries: {{ sip_result.daily_series|tojson }}
+  };
+</script>
+{% endblock %}
