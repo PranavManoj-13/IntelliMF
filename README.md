@@ -63,7 +63,7 @@ Set these Railway variables:
 
 The repo includes a [Procfile](/Users/pranav/acad./SEM-06/DSC413/Course-Project/Procfile) for a `gunicorn` web process. Railway can use that directly.
 
-`FLASK_SECRET_KEY` must be set to one stable value in Railway. If it is missing, admin sessions will not remain valid across container restarts or across multiple running instances.
+`FLASK_SECRET_KEY` must be set to one stable value in Railway. If it is missing, admin sessions will not remain valid across page loads, container restarts, or multiple running instances.
 
 For deployment, Railway should install from the root [requirements.txt](/Users/pranav/acad./SEM-06/DSC413/Course-Project/requirements.txt).
 The older [files/requirements.txt](/Users/pranav/acad./SEM-06/DSC413/Course-Project/files/requirements.txt) can remain for legacy course scripts, but it is not needed for production.

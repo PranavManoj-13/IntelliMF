@@ -24,18 +24,20 @@ from mf_app.services import MFAPIClient, compute_trailing_returns
 
 
 def create_app() -> Flask:
-    railway_environment = os.getenv("RAILWAY_ENVIRONMENT")
     flask_secret_key = os.getenv("FLASK_SECRET_KEY")
-    if railway_environment and not flask_secret_key:
-        raise RuntimeError("FLASK_SECRET_KEY must be set in Railway for stable admin sessions.")
+    debug_enabled = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    if not flask_secret_key and not debug_enabled:
+        raise RuntimeError("FLASK_SECRET_KEY must be set for non-debug deployments.")
 
     app = Flask(__name__)
-    app.secret_key = flask_secret_key or os.urandom(24)
+    app.secret_key = flask_secret_key or "dev-only-intellimf-secret-key"
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config.update(
+        SECRET_KEY=app.secret_key,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "true").lower() == "true",
+        SESSION_REFRESH_EACH_REQUEST=False,
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         PREFERRED_URL_SCHEME="https",
     )
@@ -354,5 +356,4 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    debug_enabled = os.getenv("FLASK_DEBUG", "false").lower() == "true"
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=debug_enabled)
