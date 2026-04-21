@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 import pandas as pd
 from flask import Flask, flash, redirect, render_template, request, session, url_for
@@ -23,13 +24,19 @@ from mf_app.services import MFAPIClient, compute_trailing_returns
 
 
 def create_app() -> Flask:
+    railway_environment = os.getenv("RAILWAY_ENVIRONMENT")
+    flask_secret_key = os.getenv("FLASK_SECRET_KEY")
+    if railway_environment and not flask_secret_key:
+        raise RuntimeError("FLASK_SECRET_KEY must be set in Railway for stable admin sessions.")
+
     app = Flask(__name__)
-    app.secret_key = os.getenv("FLASK_SECRET_KEY") or os.urandom(24)
+    app.secret_key = flask_secret_key or os.urandom(24)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "true").lower() == "true",
+        PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         PREFERRED_URL_SCHEME="https",
     )
 
@@ -143,6 +150,7 @@ def create_app() -> Flask:
             if authenticate_admin(username, password):
                 session["admin_logged_in"] = True
                 session["admin_username"] = username
+                session.permanent = True
                 flash("Admin login successful.", "success")
                 return redirect(url_for("admin_dashboard"))
             flash("Invalid username or password.", "error")
