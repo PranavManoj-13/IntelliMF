@@ -113,7 +113,6 @@ def init_db() -> None:
                     CREATE TABLE sip_orders (
                         id {id_column},
                         investor_name TEXT NOT NULL,
-                        investor_contact TEXT,
                         scheme_code TEXT NOT NULL,
                         scheme_name TEXT NOT NULL,
                         amount {amount_type} NOT NULL,
@@ -420,11 +419,10 @@ def get_last_scheme_sync() -> str:
     return str(row.updated_at) if row else ""
 
 
-def add_sip_orders(investor_name: str, investor_contact: str, allocations: List[Dict[str, str]]) -> None:
+def add_sip_orders(investor_name: str, allocations: List[Dict[str, str]]) -> None:
     payload = [
         {
             "investor_name": investor_name,
-            "investor_contact": investor_contact,
             "scheme_code": allocation["scheme_code"],
             "scheme_name": allocation["scheme_name"],
             "amount": allocation["amount"],
@@ -439,7 +437,6 @@ def add_sip_orders(investor_name: str, investor_contact: str, allocations: List[
                 """
                 INSERT INTO sip_orders (
                     investor_name,
-                    investor_contact,
                     scheme_code,
                     scheme_name,
                     amount,
@@ -447,7 +444,6 @@ def add_sip_orders(investor_name: str, investor_contact: str, allocations: List[
                     start_date
                 ) VALUES (
                     :investor_name,
-                    :investor_contact,
                     :scheme_code,
                     :scheme_name,
                     :amount,
@@ -554,7 +550,7 @@ def fetch_sip_orders() -> List[Dict[str, Any]]:
         rows = connection.execute(
             text(
                 """
-                SELECT id, investor_name, investor_contact, scheme_code, scheme_name,
+                SELECT id, investor_name, scheme_code, scheme_name,
                        amount, frequency, start_date, created_at
                 FROM sip_orders
                 ORDER BY created_at DESC, investor_name ASC, scheme_name ASC
