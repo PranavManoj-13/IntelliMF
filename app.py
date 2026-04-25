@@ -330,7 +330,7 @@ def create_app() -> Flask:
                 if not allocations:
                     flash("Each selected fund needs a valid SIP amount and start date.", "error")
                 else:
-                    add_sip_orders(investor_id, "", allocations)
+                    add_sip_orders(investor_id, allocations)
                     flash(f"Stored {len(allocations)} SIP order(s) for {investor_id}.", "success")
                     return redirect(url_for("admin_cart", clear_cart="1"))
 
