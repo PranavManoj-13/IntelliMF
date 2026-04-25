@@ -49,12 +49,10 @@ def init_db() -> None:
     engine = get_engine()
     with engine.begin() as connection:
         is_sqlite = engine.dialect.name == "sqlite"
-        id_column = "INTEGER PRIMARY KEY AUTOINCREMENT" if is_sqlite else "BIGSERIAL PRIMARY KEY"
+        id_column = "INTEGER PRIMARY KEY AUTOINCREMENT" if is_sqlite else "BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY"
         amount_type = "REAL" if is_sqlite else "DOUBLE PRECISION"
         inspector = inspect(connection)
         if not inspector.has_table("admins"):
-            if not is_sqlite:
-                connection.execute(text("DROP SEQUENCE IF EXISTS admins_id_seq CASCADE"))
             connection.execute(
                 text(
                     f"""
@@ -105,8 +103,6 @@ def init_db() -> None:
             )
 
         if not inspector.has_table("sip_orders"):
-            if not is_sqlite:
-                connection.execute(text("DROP SEQUENCE IF EXISTS sip_orders_id_seq CASCADE"))
             connection.execute(
                 text(
                     f"""
