@@ -14,13 +14,16 @@ DEFAULT_ADMIN_PASSWORD = os.getenv("MF_ADMIN_PASSWORD", "admin123")
 
 
 def normalize_database_url(raw_url: Optional[str]) -> str:
-    if raw_url and raw_url.startswith("postgres://"):
+    if not raw_url:
+        raise ValueError("DATABASE_URL is not set")
+
+    if raw_url.startswith("postgres://"):
         return raw_url.replace("postgres://", "postgresql+psycopg://", 1)
-    if raw_url and raw_url.startswith("postgresql://") and "+" not in raw_url.split("://", 1)[0]:
+
+    if raw_url.startswith("postgresql://") and "+" not in raw_url.split("://", 1)[0]:
         return raw_url.replace("postgresql://", "postgresql+psycopg://", 1)
-    if raw_url:
-        return raw_url
-    return "sqlite:///data/app.db"
+
+    return raw_url
 
 
 DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL"))
