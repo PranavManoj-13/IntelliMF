@@ -208,18 +208,22 @@ def compare_sip_frequencies(
 
 def mine_frequent_itemsets(baskets: List[List[str]]) -> tuple[List[Dict[str, object]], List[Dict[str, object]]]:
     baskets = normalize_baskets(baskets)
-    if not baskets:
+    if len(baskets) < 2:
         return [], []
 
     encoder = TransactionEncoder()
     encoded = encoder.fit(baskets).transform(baskets)
     basket_frame = pd.DataFrame(encoded, columns=encoder.columns_)
 
-    # Require support from at least two baskets wherever possible so one
-    # investor basket does not dominate "frequently bought together" output.
-    min_support = max(0.1, 2 / len(baskets)) if len(baskets) > 1 else 1.0
+    # Require support from at least two baskets so one investor basket cannot dominate
+    # the frequent itemset output.
+    min_support = max(0.1, 2 / len(baskets))
     itemsets = fpgrowth(basket_frame, min_support=min_support, use_colnames=True)
     if itemsets.empty:
+        return [], []
+
+    display_itemsets = itemsets[itemsets["itemsets"].map(len) >= 2]
+    if display_itemsets.empty:
         return [], []
 
     itemset_rows = [
@@ -227,12 +231,9 @@ def mine_frequent_itemsets(baskets: List[List[str]]) -> tuple[List[Dict[str, obj
             "itemsets": ", ".join(sorted(items)),
             "support": round(float(support), 4),
         }
-        for support, items in zip(itemsets["support"], itemsets["itemsets"])
+        for support, items in zip(display_itemsets["support"], display_itemsets["itemsets"])
     ]
     itemset_rows = sorted(itemset_rows, key=lambda item: (-item["support"], item["itemsets"]))
-
-    if itemsets["itemsets"].map(len).max() < 2:
-        return itemset_rows, []
 
     try:
         rules = association_rules(itemsets, metric="confidence", min_threshold=0.3)
