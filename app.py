@@ -152,7 +152,6 @@ def create_app() -> Flask:
             if authenticate_admin(username, password):
                 session["admin_logged_in"] = True
                 session["admin_username"] = username
-                session.permanent = True
                 flash("Admin login successful.", "success")
                 return redirect(url_for("admin_dashboard"))
             flash("Invalid username or password.", "error")
