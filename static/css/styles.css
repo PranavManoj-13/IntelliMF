@@ -1275,6 +1275,17 @@ body[data-theme="dark"] .theme-toggle {
   margin-top: 0;
 }
 
+.recommendation-page {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.recommendation-grid {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+}
+
 .recommendation-grid > .panel {
   display: flex;
   flex-direction: column;
@@ -1283,6 +1294,30 @@ body[data-theme="dark"] .theme-toggle {
 
 .recommendation-grid .table-wrap {
   margin-top: 0.25rem;
+}
+
+.recommendation-grid .data-table th {
+  white-space: nowrap;
+}
+
+.recommendation-grid .data-table th:nth-child(1),
+.recommendation-grid .data-table td:nth-child(1) {
+  width: 42%;
+}
+
+.recommendation-grid .data-table th:nth-child(2),
+.recommendation-grid .data-table td:nth-child(2) {
+  width: 30%;
+}
+
+.recommendation-grid .data-table th:nth-child(3),
+.recommendation-grid .data-table td:nth-child(3) {
+  width: 14%;
+}
+
+.recommendation-grid .data-table th:nth-child(4),
+.recommendation-grid .data-table td:nth-child(4) {
+  width: 14%;
 }
 
 .cart-page-grid {
@@ -1334,6 +1369,7 @@ body[data-theme="dark"] .table-wrap {
   .metric-grid,
   .quick-actions,
   .cart-page-grid,
+  .recommendation-grid,
   .section-header,
   .controls-grid {
     grid-template-columns: 1fr;
@@ -1482,6 +1518,7 @@ body[data-theme="dark"] .table-wrap {
   .funds-grid,
   .quick-actions,
   .recommendation-metrics,
+  .recommendation-page,
   .cart-page-grid,
   .dashboard-grid,
   .controls-grid,
