@@ -51,31 +51,37 @@ def init_db() -> None:
         is_sqlite = engine.dialect.name == "sqlite"
         id_column = "INTEGER PRIMARY KEY AUTOINCREMENT" if is_sqlite else "BIGSERIAL PRIMARY KEY"
         amount_type = "REAL" if is_sqlite else "DOUBLE PRECISION"
+        inspector = inspect(connection)
+        if not inspector.has_table("admins"):
+            if not is_sqlite:
+                connection.execute(text("DROP SEQUENCE IF EXISTS admins_id_seq CASCADE"))
+            connection.execute(
+                text(
+                    f"""
+                    CREATE TABLE admins (
+                        id {id_column},
+                        username TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL
+                    )
+                    """
+                )
+            )
 
-        connection.execute(
-            text(
-                f"""
-                CREATE TABLE IF NOT EXISTS admins (
-                    id {id_column},
-                    username TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL
+        if not inspector.has_table("schemes"):
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE schemes (
+                        scheme_code TEXT PRIMARY KEY,
+                        scheme_name TEXT NOT NULL,
+                        isin_growth TEXT,
+                        isin_div_reinvestment TEXT,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
                 )
-                """
             )
-        )
-        connection.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS schemes (
-                    scheme_code TEXT PRIMARY KEY,
-                    scheme_name TEXT NOT NULL,
-                    isin_growth TEXT,
-                    isin_div_reinvestment TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-        )
+
         connection.execute(
             text(
                 """
@@ -84,51 +90,59 @@ def init_db() -> None:
                 """
             )
         )
-        connection.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS sync_meta (
-                    cache_key TEXT PRIMARY KEY,
-                    cache_value TEXT NOT NULL,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+        if not inspector.has_table("sync_meta"):
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE sync_meta (
+                        cache_key TEXT PRIMARY KEY,
+                        cache_value TEXT NOT NULL,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
                 )
-                """
             )
-        )
-        connection.execute(
-            text(
-                f"""
-                CREATE TABLE IF NOT EXISTS sip_orders (
-                    id {id_column},
-                    investor_name TEXT NOT NULL,
-                    investor_contact TEXT,
-                    scheme_code TEXT NOT NULL,
-                    scheme_name TEXT NOT NULL,
-                    amount {amount_type} NOT NULL,
-                    frequency TEXT NOT NULL,
-                    start_date TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+        if not inspector.has_table("sip_orders"):
+            if not is_sqlite:
+                connection.execute(text("DROP SEQUENCE IF EXISTS sip_orders_id_seq CASCADE"))
+            connection.execute(
+                text(
+                    f"""
+                    CREATE TABLE sip_orders (
+                        id {id_column},
+                        investor_name TEXT NOT NULL,
+                        investor_contact TEXT,
+                        scheme_code TEXT NOT NULL,
+                        scheme_name TEXT NOT NULL,
+                        amount {amount_type} NOT NULL,
+                        frequency TEXT NOT NULL,
+                        start_date TEXT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
                 )
-                """
             )
-        )
-        connection.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS fund_admin_details (
-                    scheme_code TEXT PRIMARY KEY,
-                    scheme_name TEXT NOT NULL,
-                    fund_manager TEXT,
-                    aum TEXT,
-                    lock_in_period TEXT,
-                    expense_ratio TEXT,
-                    risk_level TEXT,
-                    notes TEXT,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+        if not inspector.has_table("fund_admin_details"):
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE fund_admin_details (
+                        scheme_code TEXT PRIMARY KEY,
+                        scheme_name TEXT NOT NULL,
+                        fund_manager TEXT,
+                        aum TEXT,
+                        lock_in_period TEXT,
+                        expense_ratio TEXT,
+                        risk_level TEXT,
+                        notes TEXT,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
                 )
-                """
             )
-        )
 
         inspector = inspect(connection)
         admin_columns = {column["name"] for column in inspector.get_columns("admins")}
