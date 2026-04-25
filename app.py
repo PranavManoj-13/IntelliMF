@@ -38,6 +38,7 @@ def create_app() -> Flask:
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "true").lower() == "true",
         SESSION_REFRESH_EACH_REQUEST=False,
+        SESSION_PERMANENT=False,
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         PREFERRED_URL_SCHEME="https",
     )
@@ -152,6 +153,7 @@ def create_app() -> Flask:
             if authenticate_admin(username, password):
                 session["admin_logged_in"] = True
                 session["admin_username"] = username
+                session.permanent = False
                 flash("Admin login successful.", "success")
                 return redirect(url_for("admin_dashboard"))
             flash("Invalid username or password.", "error")

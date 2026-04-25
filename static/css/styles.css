@@ -139,6 +139,11 @@ body[data-theme="dark"] .page-loader {
   font-size: 1.15rem;
 }
 
+.brand-logo {
+  height: 32px;
+  width: auto;
+}
+
 .nav-links {
   display: flex;
   gap: 0.5rem;

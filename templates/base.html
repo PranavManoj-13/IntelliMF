@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}IntelliMF{% endblock %}</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='intellimf_logo.png') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -20,7 +21,10 @@
   </div>
   <div class="site-shell">
     <header class="topbar">
-      <a class="brand" href="{{ url_for('home') }}">IntelliMF</a>
+      <a class="brand" href="{{ url_for('home') }}">
+        <img src="{{ url_for('static', filename='intellimf_logo.png') }}" alt="IntelliMF" class="brand-logo">
+        IntelliMF
+      </a>
       <nav class="nav-links">
         <a href="{{ url_for('home') }}">Home</a>
         <a href="{{ url_for('recommendations') }}">Recommendations</a>
