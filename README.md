@@ -1,69 +1,37 @@
 # IntelliMF
 
-This is now a multi-page Flask application with:
+IntelliMF is a data-driven platform for analyzing optimal Systematic Investment Plan (SIP) frequencies across 37,000+ mutual fund schemes. It combines financial analytics with data mining to provide both scheme-level optimization and portfolio-level insights.
 
-- Frontend: Jinja templates, CSS, and JavaScript charts
-- Backend: Python Flask app
-- Database: PostgreSQL for admin users, MF scheme cache, and SIP orders
+---
 
 ## Features
 
-- Search mutual funds using MFAPI
-- Show all matching funds on a dedicated search results page
-- View scheme details, NAV history, trailing returns, and SIP simulations
-- Calculate SIP performance using daily NAV times cumulative units held
-- Recommend the optimal SIP frequency for the selected fund and date range
-- Admin login to add survey-collected SIP orders
-- Frequent itemset mining with FP-Growth for "frequently bought together" funds
+- 📊 **SIP Frequency Optimization**
+  - Evaluates weekly, bi-weekly, monthly, and bi-monthly SIP strategies
+  - Identifies optimal frequency based on historical NAV data
 
-## Run
+- 🔗 **Association Rule Mining (FP-Growth)**
+  - Discovers frequently co-invested mutual funds
+  - Generates portfolio-level insights from investor baskets
 
-```bash
-pip install -r requirements.txt
-flask --app app run
-```
+- 🗄️ **PostgreSQL Data Warehouse**
+  - Stores schemes, admin metadata, and SIP transactions
+  - Supports both analytics and application queries
 
-Or:
+- ⚙️ **Admin Panel**
+  - Add/update scheme details
+  - Insert SIP orders (used for association mining)
 
-```bash
-python3 app.py
-```
+- 🌐 **Web Application**
+  - Built with Flask API
+  - Live platform: https://intellimf.pranavmanoj.in
 
-## Admin Login
+---
 
-Default credentials:
+## 🧠 Tech Stack
 
-- Username: `admin`
-- Password: `admin123`
-
-Override them if needed:
-
-```bash
-export MF_ADMIN_USERNAME="your_admin_name"
-export MF_ADMIN_PASSWORD="your_secure_password"
-export FLASK_SECRET_KEY="your_secret_key"
-export DATABASE_URL="postgresql://..."
-```
-
-## Notes
-
-- The database is read from `DATABASE_URL`. On Railway, use the PostgreSQL service connection string.
-- If MFAPI is temporarily unavailable and a local `data/raw/Schemes-List.csv` exists, the app falls back to that cache for scheme listing.
-- SIP recommendation is based on the highest return percentage for the same installment amount over the selected period.
-
-## Railway Deployment
-
-Set these Railway variables:
-
-- `DATABASE_URL`
-- `FLASK_SECRET_KEY`
-- `MF_ADMIN_USERNAME`
-- `MF_ADMIN_PASSWORD`
-- `COOKIE_SECURE=true`
-
-The repo includes a [Procfile](/Users/pranav/acad./SEM-06/DSC413/Course-Project/Procfile) for a `gunicorn` web process. Railway can use that directly.
-
-`FLASK_SECRET_KEY` must be set to one stable value in Railway. If it is missing, admin sessions will not remain valid across page loads, container restarts, or multiple running instances.
-
-For deployment, Railway should install from the root [requirements.txt](/Users/pranav/acad./SEM-06/DSC413/Course-Project/requirements.txt).
-The older [files/requirements.txt](/Users/pranav/acad./SEM-06/DSC413/Course-Project/files/requirements.txt) can remain for legacy course scripts, but it is not needed for production.
+- **Backend:** Python, Flask  
+- **Database:** PostgreSQL  
+- **Analytics:** Pandas, NumPy  
+- **Data Mining:** FP-Growth Algorithm  
+- **Deployment:** Railway
