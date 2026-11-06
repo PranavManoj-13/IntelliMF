@@ -55,7 +55,7 @@
 </section>
 
 <div id="add-cart-modal" class="modal" aria-hidden="true">
-  <div class="modal-dialog" role="dialog" aria-labelledby="add-modal-title" aria-describedby="add-modal-description">
+  <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="add-modal-title" aria-describedby="add-modal-description">
     <div class="modal-header">
       <div>
         <h3 id="add-modal-title">Add SIP details</h3>
@@ -69,7 +69,7 @@
       <div class="modal-field-grid">
         <label>
           Monthly SIP Budget
-          <input type="number" id="add-modal-amount" min="100" step="100" value="5000">
+          <input type="number" id="add-modal-amount" required max="1000000000" min="0.01" step="any" value="5000">
         </label>
         <label>
           Frequency
@@ -82,7 +82,7 @@
         </label>
         <label>
           Start Date
-          <input type="date" id="add-modal-start-date">
+          <input type="date" id="add-modal-start-date" required>
         </label>
       </div>
     </div>

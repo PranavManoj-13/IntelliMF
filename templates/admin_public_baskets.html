@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Public Baskets | IntelliMF{% endblock %}
+{% block content %}
+<section class="section-header"><div><p class="eyebrow">ADMIN · COMMUNITY SURVEY</p><h1>Public fund baskets</h1><p class="muted">{{ baskets|length }} anonymous submission(s). These baskets contribute to FP-Growth alongside admin-entered investor baskets. Deleting a submission removes it from subsequent calculations.</p></div><a class="text-link" href="{{ url_for('share_basket') }}">Open public survey {{ arrow() }}</a></section>
+{% for basket in baskets %}
+<article class="panel public-basket-row">
+  <div class="public-basket-heading"><div><h2>Basket {{ basket.id[:8] }}</h2><p class="muted">{{ basket.created_at }} · {{ basket.schemes|length }} fund(s)</p></div><form action="{{ url_for('admin_delete_public_basket', basket_id=basket.id) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="ghost-button delete-button" type="submit">Delete basket</button></form></div>
+  <ul class="public-fund-list">{% for scheme in basket.schemes %}<li>{{ scheme.scheme_name }} <small>({{ scheme.scheme_code }})</small></li>{% endfor %}</ul>
+</article>
+{% else %}<section class="empty-state"><h2>No public baskets yet</h2><p>Share the public survey link to begin collecting responses.</p><a class="text-link" href="{{ url_for('share_basket') }}">Open the survey {{ arrow() }}</a></section>{% endfor %}
+{% endblock %}

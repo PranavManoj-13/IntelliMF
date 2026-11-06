@@ -1,30 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Admin Dashboard | IntelliMF{% endblock %}
+{% block title %}Admin Workspace | IntelliMF{% endblock %}
 {% block content %}
 <section class="section-header">
   <div>
-    <p class="eyebrow">Admin Dashboard</p>
+    <p class="eyebrow">Administration</p>
     <h1>Admin Workspace</h1>
-    <p class="muted">Choose what you want to manage.</p>
+    <p class="muted">Manage investor baskets, fund details, and admin access.</p>
   </div>
 </section>
 
-<section class="quick-actions">
-  <a class="action-card" href="{{ url_for('admin_orders') }}">
-    <strong>Create SIP Order</strong>
-    <span>Search funds, add them to the cart, and build a SIP order for one investor ID.</span>
-  </a>
-  <a class="action-card" href="{{ url_for('admin_password') }}">
-    <strong>Change Password</strong>
-    <span>Update your current admin password.</span>
-  </a>
-  <a class="action-card" href="{{ url_for('admin_users') }}">
-    <strong>Add Admin</strong>
-    <span>Create a new admin user with a separate login.</span>
-  </a>
-  <a class="action-card" href="{{ url_for('admin_metadata') }}">
-    <strong>Add MF Metadata</strong>
-    <span>Search any fund and maintain metadata shown on the fund page.</span>
-  </a>
-</section>
+<div class="workspace-layout">
+  <section aria-labelledby="workspace-data">
+    <h2 id="workspace-data" class="workspace-heading">Baskets and fund data</h2>
+    <div class="quick-actions">
+      <a class="action-card" href="{{ url_for('admin_orders') }}">
+        <strong>Create SIP Order {{ arrow() }}</strong>
+        <span>Build a basket of SIP orders for one investor.</span>
+      </a>
+      <a class="action-card" href="{{ url_for('admin_public_baskets') }}">
+        <strong>Public Baskets {{ arrow() }}</strong>
+        <span>Review survey responses and remove submissions from the analysis.</span>
+      </a>
+      <a class="action-card" href="{{ url_for('admin_metadata') }}">
+        <strong>Fund Metadata {{ arrow() }}</strong>
+        <span>Update the fund details shown on public pages.</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="panel workspace-account" aria-labelledby="workspace-account">
+    <h2 id="workspace-account" class="workspace-heading">Admin access</h2>
+    <a href="{{ url_for('admin_password') }}">Change Password {{ arrow() }}</a>
+    <a href="{{ url_for('admin_users') }}">Add Admin {{ arrow() }}</a>
+  </section>
+</div>
 {% endblock %}

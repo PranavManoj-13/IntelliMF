@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found | IntelliMF{% endblock %}
+{% block content %}
+<section class="panel not-found" aria-labelledby="not-found-title">
+  <div class="not-found-copy">
+    <p class="eyebrow">Error 404</p>
+    <h1 id="not-found-title">Off the chart.</h1>
+    <p class="muted">Page not found. Head home or look up a fund to get back on track.</p>
+    <div class="not-found-actions">
+      <a class="card-action" href="{{ url_for('home') }}">Back to Home {{ arrow() }}</a>
+      <a class="secondary-button" href="{{ url_for('search') }}">Search funds</a>
+    </div>
+  </div>
+  <div class="not-found-chart" aria-hidden="true">
+    <span>404</span>
+    <svg viewBox="0 0 340 140" fill="none" focusable="false">
+      <path d="M0 122L36 106L64 112L99 83L123 89L151 65" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M151 65L185 76L219 41" stroke="currentColor" stroke-opacity=".45" stroke-width="2" stroke-dasharray="4 7"/>
+      <path d="M219 41L250 52L282 24L307 31L340 8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="151" cy="65" r="4" fill="currentColor"/>
+      <circle cx="219" cy="41" r="4" fill="currentColor"/>
+    </svg>
+    <small>Missing data point</small>
+  </div>
+</section>
+{% endblock %}

@@ -1,32 +1,51 @@
 {% extends "base.html" %}
-{% block title %}Search Results | IntelliMF{% endblock %}
+{% block title %}Fund Search | IntelliMF{% endblock %}
 {% block content %}
-<section class="section-header">
+<section class="section-header fund-search-header">
   <div>
-    <p class="eyebrow">Fund Search</p>
-    <h1>Search results for "{{ query }}"</h1>
-    <p class="muted">{{ total_results }} matching funds found.</p>
+    <p class="eyebrow">Fund Research</p>
+    <h1>Find a mutual fund</h1>
+    <p class="muted">Enter part of a fund name, a fund house, or a scheme code.</p>
   </div>
-  <form class="search-form compact" action="{{ url_for('search') }}" method="get">
-    <input type="text" name="q" value="{{ query }}" placeholder="Search again">
-    <button type="submit">Search</button>
-  </form>
 </section>
 
+<form class="search-form fund-search-form" action="{{ url_for('search') }}" method="get" role="search">
+  <label class="sr-only" for="fund-query">Search funds</label>
+  <input id="fund-query" type="search" name="q" value="{{ query }}" placeholder="e.g. UTI Nifty 50" maxlength="200" required>
+  <button type="submit">Search {{ arrow() }}</button>
+</form>
+
 {% if schemes %}
-  <section class="results-grid">
-    {% for scheme in schemes %}
-      <article class="result-card">
-        <h2>{{ scheme.scheme_name }}</h2>
-        <p class="code-chip">Scheme Code: {{ scheme.scheme_code }}</p>
-        <a class="card-action" href="{{ url_for('fund_detail', scheme_code=scheme.scheme_code) }}">Open fund details</a>
-      </article>
-    {% endfor %}
+  <section aria-labelledby="fund-results-heading">
+    <div class="results-summary">
+      <h2 id="fund-results-heading">{{ "{:,}".format(total_results) }} {{ 'fund' if total_results == 1 else 'funds' }} matching “{{ query }}”</h2>
+      {% if page_count > 1 %}<span>Showing {{ first_result }}–{{ last_result }}</span>{% endif %}
+    </div>
+    <ul class="results-list">
+      {% for scheme in schemes %}
+        <li class="result-item">
+          <a class="result-link" href="{{ url_for('fund_detail', scheme_code=scheme.scheme_code) }}">
+            <span>
+              <strong>{{ scheme.scheme_name }}</strong>
+              <small class="result-code">Scheme {{ scheme.scheme_code }}</small>
+            </span>
+            {{ arrow() }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+    {% if page_count > 1 %}
+      <nav class="results-pagination" aria-label="Fund result pages">
+        {% if page > 1 %}<a class="secondary-button" href="{{ url_for('search', q=query, page=page-1) }}">Previous</a>{% endif %}
+        <span>Page {{ page }} of {{ page_count }}</span>
+        {% if page < page_count %}<a class="secondary-button" href="{{ url_for('search', q=query, page=page+1) }}">Next {{ arrow() }}</a>{% endif %}
+      </nav>
+    {% endif %}
   </section>
-{% else %}
+{% elif query %}
   <section class="empty-state">
-    <h2>No matching funds found</h2>
-    <p>Try a broader keyword such as AMC name, category, or index family.</p>
+    <h2>No funds matching “{{ query }}”</h2>
+    <p>Try fewer words or search by scheme code.</p>
   </section>
 {% endif %}
 {% endblock %}

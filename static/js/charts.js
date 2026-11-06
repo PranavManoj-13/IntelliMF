@@ -1,4 +1,8 @@
 function renderLineChart(canvasId, labels, datasets) {
+  if (typeof Chart === 'undefined') return;
+  const style = getComputedStyle(document.documentElement);
+  const ink = style.getPropertyValue('--muted').trim();
+  const line = style.getPropertyValue('--line').trim();
   const canvas = document.getElementById(canvasId);
   if (!canvas || !labels.length) {
     return;
@@ -24,24 +28,30 @@ function renderLineChart(canvasId, labels, datasets) {
       },
       plugins: {
         legend: {
-          position: "bottom"
+          position: "bottom",
+          labels: { color: ink, font: { family: "Inter, Arial, sans-serif", size: 11 }, usePointStyle: true, boxWidth: 6, padding: 20 }
         }
       },
       scales: {
         x: {
+          ticks: { color: ink, maxTicksLimit: 7, font: { family: "Inter, Arial, sans-serif", size: 10 } },
+          border: { color: line },
           grid: {
             display: false
           }
         },
         y: {
-          beginAtZero: false
+          beginAtZero: false,
+          ticks: { color: ink, font: { family: "Inter, Arial, sans-serif", size: 10 } },
+          border: { display: false },
+          grid: { color: line }
         }
       }
     }
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function renderFundCharts() {
   if (!window.MFCharts) {
     return;
   }
@@ -54,8 +64,8 @@ document.addEventListener("DOMContentLoaded", () => {
       {
         label: "NAV",
         data: navSeries.map((item) => item.nav),
-        borderColor: "#215732",
-        backgroundColor: "rgba(33, 87, 50, 0.12)",
+        borderColor: "#6987b4",
+        backgroundColor: "rgba(105, 135, 180, 0.10)",
         fill: true,
         pointRadius: 0,
         tension: 0.2
@@ -71,8 +81,8 @@ document.addEventListener("DOMContentLoaded", () => {
       {
         label: "Portfolio Value",
         data: sipSeries.map((item) => item.portfolio_value),
-        borderColor: "#215732",
-        backgroundColor: "rgba(33, 87, 50, 0.12)",
+        borderColor: "#6987b4",
+        backgroundColor: "rgba(105, 135, 180, 0.10)",
         fill: false,
         pointRadius: 0,
         tension: 0.18
@@ -80,12 +90,13 @@ document.addEventListener("DOMContentLoaded", () => {
       {
         label: "Invested Amount",
         data: sipSeries.map((item) => item.invested_amount),
-        borderColor: "#d79f44",
-        backgroundColor: "rgba(215, 159, 68, 0.12)",
+        borderColor: "#65a7a2",
+        backgroundColor: "rgba(101, 167, 162, 0.10)",
         fill: false,
         pointRadius: 0,
         tension: 0.18
       }
     ]
   );
-});
+}
+document.addEventListener("DOMContentLoaded", renderFundCharts);

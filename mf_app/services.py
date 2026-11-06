@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List
@@ -8,6 +10,13 @@ import pandas as pd
 import requests
 
 from mf_app.db import get_last_scheme_sync, get_scheme_count, replace_schemes, search_schemes
+
+
+logger = logging.getLogger(__name__)
+
+
+class MFAPIUnavailable(Exception):
+    """The upstream API could not provide usable fund data."""
 
 
 @dataclass
@@ -19,7 +28,6 @@ class SchemeDetails:
     scheme_category: str
     current_nav: float
     current_date: pd.Timestamp
-    coverage_date: pd.Timestamp
     nav_history: pd.DataFrame
     actual_nav_history: pd.DataFrame
 
@@ -35,55 +43,63 @@ class MFAPIClient:
         self.base_url = "https://api.mfapi.in"
         self.session = requests.Session()
 
-    def ensure_scheme_cache(self, force_refresh: bool = False) -> None:
+    def ensure_scheme_cache(self) -> None:
         cached_count = get_scheme_count()
         last_sync = get_last_scheme_sync()
         last_sync_ts = pd.to_datetime(last_sync, errors="coerce") if last_sync else pd.NaT
         stale_cache = pd.isna(last_sync_ts) or (pd.Timestamp.utcnow().tz_localize(None) - last_sync_ts) > pd.Timedelta(hours=12)
-        needs_refresh = force_refresh or cached_count == 0 or stale_cache
-
-        if not needs_refresh:
+        if cached_count and not stale_cache:
             return
 
         try:
             response = self.session.get(f"{self.base_url}/mf", timeout=45)
             response.raise_for_status()
             schemes = response.json()
-            replace_schemes(schemes)
-        except Exception:
+            if not isinstance(schemes, list) or not schemes or any(not isinstance(item, dict) or not str(item.get("schemeCode", "")).isdigit() or not isinstance(item.get("schemeName"), str) or not item["schemeName"].strip() for item in schemes):
+                raise ValueError("Invalid scheme catalogue")
+            replace_schemes({str(item["schemeCode"]): item for item in schemes}.values())
+        except (requests.RequestException, ValueError):
+            logger.warning("Scheme refresh failed; using cached catalogue.")
             if cached_count == 0:
-                fallback = Path("data/raw/Schemes-List.csv")
+                fallback = Path(__file__).resolve().parent.parent / "data/raw/Schemes-List.csv"
                 if fallback.exists():
                     frame = pd.read_csv(fallback)
-                    replace_schemes(frame.to_dict(orient="records"))
-
-    def get_scheme_count(self) -> int:
-        self.ensure_scheme_cache()
-        return get_scheme_count()
+                    replace_schemes(frame.fillna("").to_dict(orient="records"))
+                else:
+                    raise MFAPIUnavailable("The fund catalogue is temporarily unavailable.") from None
 
     def search_schemes(self, query: str) -> List[Dict[str, str]]:
         self.ensure_scheme_cache()
-        rows = search_schemes(query)
-        return [dict(row) for row in rows]
+        return search_schemes(query)
 
     def fetch_scheme_details(self, scheme_code: str) -> SchemeDetails:
-        response = self.session.get(f"{self.base_url}/mf/{scheme_code}", timeout=45)
-        response.raise_for_status()
-        payload = response.json()
-        meta = payload.get("meta", {})
-        nav_history = pd.DataFrame(payload.get("data", []))
-        if nav_history.empty:
-            nav_history = pd.DataFrame(columns=["date", "nav"])
-
-        nav_history["date"] = pd.to_datetime(nav_history["date"], format="%d-%m-%Y", errors="coerce")
-        nav_history["nav"] = pd.to_numeric(nav_history["nav"], errors="coerce")
-        nav_history = nav_history.dropna(subset=["date", "nav"]).sort_values("date").reset_index(drop=True)
+        try:
+            response = self.session.get(f"{self.base_url}/mf/{scheme_code}", timeout=20)
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, dict) or not isinstance(payload.get("meta"), dict) or not isinstance(payload.get("data"), list):
+                raise ValueError("Malformed fund details")
+            if not all(isinstance(record, dict) for record in payload["data"]):
+                raise ValueError("Malformed NAV observations")
+            meta = payload["meta"]
+            nav_history = pd.DataFrame(payload["data"])
+            if nav_history.empty:
+                nav_history = pd.DataFrame(columns=["date", "nav"])
+            nav_history["date"] = pd.to_datetime(nav_history["date"], format="%d-%m-%Y", errors="coerce")
+            nav_history["nav"] = pd.to_numeric(nav_history["nav"], errors="coerce")
+            nav_history = nav_history.dropna(subset=["date", "nav"])
+            valid_nav = nav_history["nav"].map(lambda nav: math.isfinite(nav) and nav > 0).astype(bool)
+            nav_history = nav_history.loc[valid_nav]
+            nav_history = nav_history[nav_history["date"] <= pd.Timestamp.now().normalize()]
+            nav_history = nav_history.sort_values("date").drop_duplicates("date").reset_index(drop=True)
+        except (requests.RequestException, ValueError, KeyError, TypeError):
+            logger.warning("MFAPI fund details unavailable for scheme %s", scheme_code)
+            raise MFAPIUnavailable("Fund details are temporarily unavailable. Please try again shortly.") from None
         actual_nav_history = nav_history.copy()
         nav_history = self.extend_nav_history_to_today(actual_nav_history)
 
         current_nav = float(actual_nav_history.iloc[-1]["nav"]) if not actual_nav_history.empty else 0.0
         current_date = actual_nav_history.iloc[-1]["date"] if not actual_nav_history.empty else pd.NaT
-        coverage_date = nav_history.iloc[-1]["date"] if not nav_history.empty else pd.NaT
 
         return SchemeDetails(
             scheme_code=str(meta.get("scheme_code", scheme_code)),
@@ -93,7 +109,6 @@ class MFAPIClient:
             scheme_category=meta.get("scheme_category", "Unknown Category"),
             current_nav=current_nav,
             current_date=current_date,
-            coverage_date=coverage_date,
             nav_history=nav_history,
             actual_nav_history=actual_nav_history,
         )

@@ -23,6 +23,7 @@
     </div>
 
     <form id="sip-order-form" class="stack-form" action="{{ url_for('admin_cart') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <label class="investor-label">
         Investor ID
         <input type="text" name="investor_id" required placeholder="Enter investor ID">
@@ -86,6 +87,7 @@
                 <td>{{ row.created_at }}</td>
                 <td>
                   <form action="{{ url_for('admin_delete_order', order_id=row.id) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="ghost-button compact-button">Delete</button>
                   </form>
                 </td>

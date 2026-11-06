@@ -1,69 +1,48 @@
 # IntelliMF
 
-This is now a multi-page Flask application with:
+IntelliMF is a Flask app for mutual fund search, NAV analysis, SIP simulation, and investor basket analysis. It uses PostgreSQL in production and also supports SQLite for local development.
 
-- Frontend: Jinja templates, CSS, and JavaScript charts
-- Backend: Python Flask app
-- Database: PostgreSQL for admin users, MF scheme cache, and SIP orders
+[Production site](https://intellimf.pranavmanoj.in) hosted on Railway.
 
-## Features
+## Run locally
 
-- Search mutual funds using MFAPI
-- Show all matching funds on a dedicated search results page
-- View scheme details, NAV history, trailing returns, and SIP simulations
-- Calculate SIP performance using daily NAV times cumulative units held
-- Recommend the optimal SIP frequency for the selected fund and date range
-- Admin login to add survey-collected SIP orders
-- Frequent itemset mining with FP-Growth for "frequently bought together" funds
-
-## Run
+Install the dependencies in your Python environment:
 
 ```bash
 pip install -r requirements.txt
-flask --app app run
 ```
 
-Or:
+To use a separate local SQLite database:
 
 ```bash
-python3 app.py
+DATABASE_URL=sqlite:///data/local.db COOKIE_SECURE=false python -m flask --app app run --debug --port 5001
 ```
 
-## Admin Login
+Open `http://localhost:5001`. To use PostgreSQL instead, set `DATABASE_URL` to a working PostgreSQL connection string in your environment or `.env`.
 
-Default credentials:
+## Set up admin access
 
-- Username: `admin`
-- Password: `admin123`
-
-Override them if needed:
+There is no built-in admin password. The app disables accounts that still use the old default password. Create or reset an account with the hidden password prompt (use a password of 12–256 characters):
 
 ```bash
-export MF_ADMIN_USERNAME="your_admin_name"
-export MF_ADMIN_PASSWORD="your_secure_password"
-export FLASK_SECRET_KEY="your_secret_key"
-export DATABASE_URL="postgresql://..."
+DATABASE_URL=sqlite:///data/local.db FLASK_DEBUG=true python -m flask --app app set-admin --username admin
 ```
+
+Open **Admin Login** in the site footer or visit `/admin/login` directly. Use the same `DATABASE_URL` as the server. For PostgreSQL, omit the SQLite override and use the configured connection. Resetting a password invalidates existing sessions for that account. Existing accounts with a non-default password can keep using it. Legacy plaintext passwords are migrated to hashes, and the plaintext column is removed.
+
+An explicitly configured `MF_ADMIN_USERNAME` and strong `MF_ADMIN_PASSWORD` can bootstrap a new account. These variables do not reset an existing account; use `set-admin` for that.
+
+## Collect investor baskets
+
+Share `/share-basket` to collect anonymous selections of up to 20 funds. One submission per browser session is counted, and no names, contact details, or investment amounts are requested. Admins can find and delete submissions from **Workspace → Public Baskets**. Each public submission and each admin-entered investor basket contributes separately to FP-Growth. Results are recalculated from the remaining baskets after deletion. The analysis reports recurring pairs and triples.
 
 ## Notes
 
-- The database is read from `DATABASE_URL`. On Railway, use the PostgreSQL service connection string.
-- If MFAPI is temporarily unavailable and a local `data/raw/Schemes-List.csv` exists, the app falls back to that cache for scheme listing.
-- SIP recommendation is based on the highest return percentage for the same installment amount over the selected period.
+- Fund details are loaded from MFAPI. If the catalogue refresh fails, the app uses its existing cache or the bundled scheme list.
+- SIP comparisons hold the monthly budget constant and only count executions within the selected period.
+- Preprocess the course NAV files with `python files/Data-Preprocessing.py`.
+- Run the regression suite with `python -m unittest discover -s tests -v`.
 
-## Railway Deployment
+## Deploy
 
-Set these Railway variables:
-
-- `DATABASE_URL`
-- `FLASK_SECRET_KEY`
-- `MF_ADMIN_USERNAME`
-- `MF_ADMIN_PASSWORD`
-- `COOKIE_SECURE=true`
-
-The repo includes a [Procfile](/Users/pranav/acad./SEM-06/DSC413/Course-Project/Procfile) for a `gunicorn` web process. Railway can use that directly.
-
-`FLASK_SECRET_KEY` must be set to one stable value in Railway. If it is missing, admin sessions will not remain valid across page loads, container restarts, or multiple running instances.
-
-For deployment, Railway should install from the root [requirements.txt](/Users/pranav/acad./SEM-06/DSC413/Course-Project/requirements.txt).
-The older [files/requirements.txt](/Users/pranav/acad./SEM-06/DSC413/Course-Project/files/requirements.txt) can remain for legacy course scripts, but it is not needed for production.
+The `Procfile` starts Gunicorn. Set a stable, random `FLASK_SECRET_KEY`, a working `DATABASE_URL`, and `COOKIE_SECURE=true` for HTTPS. Set `TRUST_PROXY=true` only when requests arrive through one trusted reverse proxy that sets the forwarded client IP and protocol. This lets request limits distinguish visitors behind that proxy. Configure admin bootstrap credentials or run `set-admin` against the deployment database.

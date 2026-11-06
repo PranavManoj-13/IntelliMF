@@ -1,41 +1,26 @@
 (function () {
-  function showLoader() {
-    const loader = document.getElementById("page-loader");
-    if (loader) {
-      loader.classList.add("is-visible");
-      loader.setAttribute("aria-hidden", "false");
-    }
-  }
-
+  const loader = document.getElementById('page-loader');
+  if (!loader) return;
   function hideLoader() {
-    const loader = document.getElementById("page-loader");
-    if (loader) {
-      loader.classList.remove("is-visible");
-      loader.setAttribute("aria-hidden", "true");
-    }
+    loader.classList.remove('is-visible');
+    loader.setAttribute('aria-hidden', 'true');
   }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    hideLoader();
-
-    document.querySelectorAll("a[href]").forEach((link) => {
-      link.addEventListener("click", (event) => {
-        const href = link.getAttribute("href");
-        if (!href || href.startsWith("#") || link.target === "_blank" || event.metaKey || event.ctrlKey) {
-          return;
-        }
-        showLoader();
-      });
-    });
-
-    document.querySelectorAll("form").forEach((form) => {
-      form.addEventListener("submit", () => {
-        showLoader();
-      });
-    });
-
-    window.addEventListener("pageshow", () => {
-      hideLoader();
-    });
+  function showLoader() {
+    loader.classList.add('is-visible');
+    loader.setAttribute('aria-hidden', 'false');
+  }
+  // Delay the overlay briefly so anchor navigation and quick responses stay immediate.
+  function queueLoader(event) {
+    setTimeout(() => { if (!event.defaultPrevented) showLoader(); }, 180);
+  }
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href]');
+    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target === '_blank' || link.hasAttribute('download')) return;
+    const target = new URL(link.href, location.href);
+    if (target.origin !== location.origin || !['http:', 'https:'].includes(target.protocol)) return;
+    if (target.pathname === location.pathname && target.search === location.search) return;
+    queueLoader(event);
   });
+  document.addEventListener('submit', (event) => { if (event.target.method !== 'dialog') queueLoader(event); });
+  window.addEventListener('pageshow', hideLoader);
 })();

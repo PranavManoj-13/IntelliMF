@@ -1,13 +1,27 @@
 import os
+import re
+import secrets
 from datetime import timedelta
 
+import click
+
+from dotenv import load_dotenv
 import pandas as pd
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+# Load environment variables from .env file
+load_dotenv()
 
 from mf_app.analytics import compare_sip_frequencies, mine_frequent_itemsets, simulate_sip
 from mf_app.db import (
     add_sip_orders,
+    add_public_basket,
+    delete_public_basket,
+    fetch_public_baskets,
+    verified_admin_session_version,
+    has_public_basket,
+    set_admin_credentials,
     authenticate_admin,
     create_admin_user,
     delete_sip_order,
@@ -20,7 +34,9 @@ from mf_app.db import (
     upsert_fund_admin_details,
     update_admin_password,
 )
-from mf_app.services import MFAPIClient, compute_trailing_returns
+from mf_app.services import MFAPIClient, MFAPIUnavailable, compute_trailing_returns
+from mf_app.security import install_security, request_allowed
+from mf_app.validation import amount_value, date_value, frequency_value, metadata_values, order_allocations, selected_funds
 
 
 def create_app() -> Flask:
@@ -30,10 +46,12 @@ def create_app() -> Flask:
         raise RuntimeError("FLASK_SECRET_KEY must be set for non-debug deployments.")
 
     app = Flask(__name__)
-    app.secret_key = flask_secret_key or "dev-only-intellimf-secret-key"
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    app.secret_key = flask_secret_key or secrets.token_urlsafe(48)
+    if os.getenv("TRUST_PROXY", "false").lower() == "true":
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
     app.config.update(
         SECRET_KEY=app.secret_key,
+        MAX_CONTENT_LENGTH=128 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "true").lower() == "true",
@@ -45,6 +63,38 @@ def create_app() -> Flask:
 
     init_db()
     client = MFAPIClient()
+    install_security(app)
+
+    @app.cli.command("set-admin")
+    @click.option("--username", prompt=True)
+    @click.password_option()
+    def set_admin(username, password):
+        """Create or reset an admin using an interactive, hidden password prompt."""
+        try:
+            set_admin_credentials(username, password)
+        except ValueError as error:
+            raise click.ClickException(str(error)) from None
+        click.echo("Admin credentials saved. Existing sessions for this account have been invalidated.")
+
+    @app.before_request
+    def validate_query_lengths():
+        if any(len(value) > 200 or "\x00" in value for _, value in request.args.items(multi=True)):
+            abort(400, description="The search or form value is too long or contains invalid characters.")
+
+    @app.errorhandler(400)
+    @app.errorhandler(413)
+    @app.errorhandler(429)
+    def invalid_request(error):
+        return render_template("error.html", message=error.description), error.code
+
+    @app.errorhandler(404)
+    def page_not_found(_error):
+        return render_template("404.html"), 404
+
+    @app.errorhandler(MFAPIUnavailable)
+    def unavailable_fund(error):
+        flash(str(error), "error")
+        return redirect(url_for("home"))
 
     @app.context_processor
     def inject_globals():
@@ -55,22 +105,32 @@ def create_app() -> Flask:
 
     @app.route("/")
     def home():
-        total_schemes = client.get_scheme_count()
-        return render_template("home.html", total_schemes=total_schemes)
+        return render_template("home.html")
 
     @app.route("/search")
     def search():
         query = request.args.get("q", "").strip()
         schemes = client.search_schemes(query) if query else []
+        page_size = 24
+        total_results = len(schemes)
+        page_count = max(1, (total_results + page_size - 1) // page_size)
+        page = min(max(1, request.args.get("page", 1, type=int)), page_count)
+        start = (page - 1) * page_size
         return render_template(
             "search_results.html",
             query=query,
-            schemes=schemes,
-            total_results=len(schemes),
+            schemes=schemes[start:start + page_size],
+            total_results=total_results,
+            page=page,
+            page_count=page_count,
+            first_result=start + 1,
+            last_result=min(start + page_size, total_results),
         )
 
     @app.route("/fund/<scheme_code>")
     def fund_detail(scheme_code: str):
+        if not re.fullmatch(r"\d{1,12}", scheme_code):
+            abort(404)
         details = client.fetch_scheme_details(scheme_code)
         nav_history = details.nav_history
 
@@ -78,24 +138,21 @@ def create_app() -> Flask:
             flash("NAV history is not available for this mutual fund.", "error")
             return redirect(url_for("home"))
 
+        default_end = pd.Timestamp(nav_history["date"].max())
+        default_start = max(pd.Timestamp(nav_history["date"].min()), default_end - pd.DateOffset(years=3))
         try:
-            default_amount = float(request.args.get("amount", 5000))
-        except ValueError:
-            default_amount = 5000.0
-        default_end = nav_history["date"].max()
-        default_start = max(
-            nav_history["date"].min(),
-            default_end - pd.DateOffset(years=3),
-        )
-
-        requested_start = request.args.get("start_date")
-        requested_end = request.args.get("end_date")
-        selected_start = pd.to_datetime(requested_start, errors="coerce") if requested_start else pd.Timestamp(default_start)
-        selected_end = pd.to_datetime(requested_end, errors="coerce") if requested_end else pd.Timestamp(default_end)
-        if pd.isna(selected_start):
-            selected_start = pd.Timestamp(default_start)
-        if pd.isna(selected_end):
-            selected_end = pd.Timestamp(default_end)
+            default_amount = amount_value(request.args.get("amount", "5000"))
+            selected_start = pd.Timestamp(date_value(request.args["start_date"])) if request.args.get("start_date") else default_start
+            selected_end = pd.Timestamp(date_value(request.args["end_date"])) if request.args.get("end_date") else default_end
+            if selected_start > selected_end:
+                raise ValueError("Start date must be on or before end date.")
+            if selected_start < nav_history["date"].min() or selected_end > default_end:
+                raise ValueError("Choose dates within the available NAV history.")
+            if request.args.get("frequency"):
+                frequency_value(request.args["frequency"])
+        except ValueError as error:
+            flash(str(error), "error")
+            return redirect(url_for("fund_detail", scheme_code=scheme_code))
 
         recommendation = compare_sip_frequencies(
             nav_history=nav_history,
@@ -113,6 +170,9 @@ def create_app() -> Flask:
             start_date=selected_start,
             end_date=selected_end,
         )
+
+        if not sip_result["summary"]:
+            flash("No SIP executions are available within this date range. Choose a period containing a NAV date.", "error")
 
         return render_template(
             "fund_detail.html",
@@ -136,6 +196,7 @@ def create_app() -> Flask:
         try:
             itemsets, rules = mine_frequent_itemsets(baskets)
         except Exception:
+            app.logger.exception("Basket mining failed")
             flash("Recommendations could not be generated from the current order history.", "error")
             itemsets, rules = [], []
         return render_template(
@@ -148,9 +209,19 @@ def create_app() -> Flask:
     @app.route("/admin/login", methods=["GET", "POST"])
     def admin_login():
         if request.method == "POST":
+            if not request_allowed(app, "admin-login", 10, 900):
+                abort(429, description="Too many login attempts. Please try again in 15 minutes.")
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
-            if authenticate_admin(username, password):
+            if len(username) > 80 or (username and not username.isprintable()) or len(password) > 256:
+                abort(400, description="Invalid login details.")
+            version = verified_admin_session_version(username, password)
+            if version is not None:
+                respondent = session.get("public_respondent_key")
+                session.clear()
+                if respondent:
+                    session["public_respondent_key"] = respondent
+                session["admin_session_version"] = version
                 session["admin_logged_in"] = True
                 session["admin_username"] = username
                 session.permanent = False
@@ -160,10 +231,12 @@ def create_app() -> Flask:
 
         return render_template("admin_login.html")
 
-    @app.route("/admin/logout")
+    @app.post("/admin/logout")
     def admin_logout():
-        session.pop("admin_logged_in", None)
-        session.pop("admin_username", None)
+        respondent = session.get("public_respondent_key")
+        session.clear()
+        if respondent:
+            session["public_respondent_key"] = respondent
         flash("Logged out successfully.", "success")
         return redirect(url_for("home"))
 
@@ -190,12 +263,14 @@ def create_app() -> Flask:
             new_password = request.form.get("new_password", "")
             confirm_password = request.form.get("confirm_password", "")
 
-            if len(new_password) < 6:
-                flash("New password must be at least 6 characters long.", "error")
+            if not 12 <= len(new_password) <= 256:
+                flash("New password must be 12–256 characters long.", "error")
             elif new_password != confirm_password:
                 flash("New password and confirmation do not match.", "error")
             elif update_admin_password(session.get("admin_username", ""), current_password, new_password):
-                flash("Admin password updated successfully.", "success")
+                session.clear()
+                flash("Password updated. Please log in again.", "success")
+                return redirect(url_for("admin_login"))
             else:
                 flash("Current password is incorrect.", "error")
             return redirect(url_for("admin_password"))
@@ -213,10 +288,12 @@ def create_app() -> Flask:
             password = request.form.get("new_admin_password", "")
             confirm_password = request.form.get("confirm_new_admin_password", "")
 
-            if not username:
-                flash("New admin username is required.", "error")
-            elif len(password) < 6:
-                flash("New admin password must be at least 6 characters long.", "error")
+            if not authenticate_admin(session.get("admin_username", ""), request.form.get("current_password", "")):
+                flash("Enter your current password to create an admin account.", "error")
+            elif not username or len(username) > 80:
+                flash("Use a username of 1–80 characters.", "error")
+            elif not 12 <= len(password) <= 256:
+                flash("New admin password must be 12–256 characters long.", "error")
             elif password != confirm_password:
                 flash("New admin password and confirmation do not match.", "error")
             else:
@@ -233,27 +310,14 @@ def create_app() -> Flask:
             return redirect(url_for("admin_login"))
 
         if request.method == "POST":
-            scheme_code = request.form.get("scheme_code", "").strip()
-            scheme_name = request.form.get("scheme_name", "").strip()
-            if not scheme_code or not scheme_name:
-                flash("Scheme code and scheme name are required to save metadata.", "error")
+            try:
+                values = metadata_values(request.form)
+            except ValueError as error:
+                flash(str(error), "error")
                 return redirect(url_for("admin_metadata"))
-
-            upsert_fund_admin_details(
-                [
-                    {
-                        "scheme_code": scheme_code,
-                        "scheme_name": scheme_name,
-                        "fund_manager": request.form.get("fund_manager", "").strip(),
-                        "aum": request.form.get("aum", "").strip(),
-                        "lock_in_period": request.form.get("lock_in_period", "").strip(),
-                        "expense_ratio": request.form.get("expense_ratio", "").strip(),
-                        "risk_level": request.form.get("risk_level", "").strip(),
-                        "notes": request.form.get("notes", "").strip(),
-                    }
-                ]
-            )
-            flash(f"Fund metadata updated for {scheme_name}.", "success")
+            scheme_code = values["scheme_code"]
+            upsert_fund_admin_details([values])
+            flash(f"Fund metadata updated for {values['scheme_name']}.", "success")
             return redirect(
                 url_for(
                     "admin_metadata",
@@ -298,42 +362,16 @@ def create_app() -> Flask:
 
         if request.method == "POST":
             investor_id = request.form.get("investor_id", "").strip()
-            selected_schemes = request.form.getlist("selected_schemes")
-
-            if not investor_id:
-                flash("Investor ID is required.", "error")
-            elif not selected_schemes:
-                flash("Select at least one mutual fund.", "error")
+            try:
+                if not investor_id or len(investor_id) > 100 or not investor_id.isprintable():
+                    raise ValueError("Enter an investor ID of 1–100 characters.")
+                allocations = order_allocations(request.form)
+            except ValueError as error:
+                flash(str(error), "error")
             else:
-                allocations = []
-                for scheme in selected_schemes:
-                    scheme_code, scheme_name = scheme.split("|||", 1)
-                    amount_raw = request.form.get(f"amount_{scheme_code}", "0")
-                    frequency = request.form.get(f"frequency_{scheme_code}", "Monthly")
-                    start_date = request.form.get(f"start_date_{scheme_code}", "")
-                    try:
-                        amount = float(amount_raw or 0)
-                    except ValueError:
-                        amount = 0
-
-                    if amount <= 0 or not start_date:
-                        continue
-
-                    allocations.append(
-                        {
-                            "scheme_code": scheme_code,
-                            "scheme_name": scheme_name,
-                            "amount": amount,
-                            "frequency": frequency,
-                            "start_date": start_date,
-                        }
-                    )
-                if not allocations:
-                    flash("Each selected fund needs a valid SIP amount and start date.", "error")
-                else:
-                    add_sip_orders(investor_id, allocations)
-                    flash(f"Stored {len(allocations)} SIP order(s) for {investor_id}.", "success")
-                    return redirect(url_for("admin_cart", clear_cart="1"))
+                add_sip_orders(investor_id, allocations)
+                flash(f"Stored {len(allocations)} SIP order(s) for {investor_id}.", "success")
+                return redirect(url_for("admin_cart", clear_cart="1"))
 
         orders = fetch_sip_orders()
         return render_template(
@@ -341,6 +379,47 @@ def create_app() -> Flask:
             orders=orders,
             clear_cart=request.args.get("clear_cart") == "1",
         )
+
+    @app.route("/share-basket", methods=["GET", "POST"])
+    def share_basket():
+        if "public_respondent_key" not in session:
+            session["public_respondent_key"] = secrets.token_urlsafe(32)
+        respondent = session["public_respondent_key"]
+        submitted = has_public_basket(respondent)
+        if request.method == "POST":
+            if submitted:
+                flash("Your basket has already been received. Thank you!", "success")
+                return redirect(url_for("share_basket"))
+            if not request_allowed(app, "public-basket", 30, 3600):
+                abort(429, description="Too many submissions. Please try again in an hour.")
+            try:
+                schemes = selected_funds(request.form.getlist("scheme_codes"))
+            except ValueError as error:
+                flash(str(error), "error")
+            else:
+                add_public_basket(respondent, schemes)
+                flash("Thank you! Your basket now contributes to investor patterns.", "success")
+                return redirect(url_for("share_basket"))
+        query = request.args.get("q", "").strip()
+        results = client.search_schemes(query)[:100] if query and not submitted else []
+        return render_template("share_basket.html", query=query, results=results, submitted=submitted)
+
+    @app.get("/admin/public-baskets")
+    def admin_public_baskets():
+        if not session.get("admin_logged_in"):
+            flash("Please log in as admin to continue.", "error")
+            return redirect(url_for("admin_login"))
+        return render_template("admin_public_baskets.html", baskets=fetch_public_baskets())
+
+    @app.post("/admin/public-baskets/<basket_id>/delete")
+    def admin_delete_public_basket(basket_id):
+        if not session.get("admin_logged_in"):
+            abort(403)
+        if delete_public_basket(basket_id):
+            flash("Public basket deleted and removed from investor pattern calculations.", "success")
+        else:
+            flash("That basket was already removed.", "error")
+        return redirect(url_for("admin_public_baskets"))
 
     @app.route("/admin/dashboard")
     def admin_dashboard():
@@ -357,4 +436,5 @@ app = create_app()
 
 
 if __name__ == "__main__":
+    debug_enabled = os.getenv("FLASK_DEBUG", "False").lower() == "true"
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5000")), debug=debug_enabled)

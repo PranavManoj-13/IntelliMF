@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Dict, List
 
 import pandas as pd
@@ -25,6 +26,8 @@ def generate_sip_dates(
     end_date: pd.Timestamp,
     nav_history: pd.DataFrame,
 ) -> pd.DatetimeIndex:
+    if frequency not in FREQUENCIES:
+        raise ValueError("Choose a supported SIP frequency.")
     if frequency == "Daily":
         available_dates = nav_history[
             (nav_history["date"] >= start_date) & (nav_history["date"] <= end_date)
@@ -37,14 +40,12 @@ def generate_sip_dates(
 
     while current <= end_date:
         dates.append(current)
-        if frequency == "Daily":
-            current += pd.Timedelta(days=1)
-        elif frequency == "Weekly":
+        if frequency == "Weekly":
             current += pd.Timedelta(days=7)
         elif frequency == "Bi-Weekly":
             current += pd.Timedelta(days=14)
         elif frequency == "Monthly":
-            current += pd.DateOffset(months=1)
+            current = pd.Timestamp(start_date) + pd.DateOffset(months=len(dates))
         else:
             break
 
@@ -102,10 +103,23 @@ def simulate_sip(
     start_date: pd.Timestamp,
     end_date: pd.Timestamp,
 ) -> Dict[str, object]:
+    if not math.isfinite(float(amount)) or not 0 < float(amount) <= 1_000_000_000:
+        raise ValueError("Enter a positive, finite SIP amount up to 1,000,000,000.")
+    if frequency not in FREQUENCIES:
+        raise ValueError("Choose a supported SIP frequency.")
+    if pd.isna(start_date) or pd.isna(end_date):
+        raise ValueError("Enter valid start and end dates.")
     if nav_history.empty:
         return {"summary": {}, "investments": [], "daily_series": []}
 
-    nav_history = nav_history.sort_values("date").copy()
+    nav_history = nav_history.copy()
+    nav_history["nav"] = pd.to_numeric(nav_history["nav"], errors="coerce")
+    nav_history = nav_history.dropna(subset=["date", "nav"])
+    valid_nav = nav_history["nav"].map(lambda value: math.isfinite(value) and value > 0).astype(bool)
+    nav_history = nav_history.loc[valid_nav]
+    nav_history = nav_history.sort_values("date").drop_duplicates("date")
+    if nav_history.empty:
+        return {"summary": {}, "investments": [], "daily_series": []}
     start_date = max(pd.Timestamp(start_date), pd.Timestamp(nav_history["date"].min()))
     end_date = min(pd.Timestamp(end_date), pd.Timestamp(nav_history["date"].max()))
 
@@ -116,7 +130,10 @@ def simulate_sip(
     if scheduled_dates.empty:
         scheduled_dates = pd.DatetimeIndex([start_date])
 
-    investments = map_investments_to_nav(nav_history, scheduled_dates)
+    execution_history = nav_history[(nav_history["date"] >= start_date) & (nav_history["date"] <= end_date)]
+    if execution_history.empty:
+        return {"summary": {}, "investments": [], "daily_series": []}
+    investments = map_investments_to_nav(execution_history, scheduled_dates)
     if investments.empty:
         return {"summary": {}, "investments": [], "daily_series": []}
 
@@ -128,6 +145,8 @@ def simulate_sip(
         (nav_history["date"] >= investments["date"].min()) & (nav_history["date"] <= end_date)
     ].copy()
     daily_portfolio = build_daily_portfolio(portfolio_window, investments)
+    if daily_portfolio.empty:
+        return {"summary": {}, "investments": [], "daily_series": []}
     final_row = daily_portfolio.iloc[-1]
 
     summary = {
@@ -218,7 +237,8 @@ def mine_frequent_itemsets(baskets: List[List[str]]) -> tuple[List[Dict[str, obj
     # Require support from at least two baskets so one investor basket cannot dominate
     # the frequent itemset output.
     min_support = max(0.1, 2 / len(baskets))
-    itemsets = fpgrowth(basket_frame, min_support=min_support, use_colnames=True)
+    # Public baskets can contain many funds. Bound the search to useful pairs and triples.
+    itemsets = fpgrowth(basket_frame, min_support=min_support, use_colnames=True, max_len=3)
     if itemsets.empty:
         return [], []
 

@@ -37,6 +37,7 @@
 
   {% if selected_metadata_scheme %}
     <form class="metadata-editor" action="{{ url_for('admin_metadata', meta_query=meta_query, meta_scheme_code=selected_metadata_scheme.scheme_code) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <input type="hidden" name="scheme_code" value="{{ selected_metadata_scheme.scheme_code }}">
       <input type="hidden" name="scheme_name" value="{{ selected_metadata_scheme.scheme_name }}">
       <div class="panel-heading compact-heading">
@@ -83,6 +84,7 @@
     <div class="metadata-table">
       {% for row in fund_metadata_rows %}
         <form class="metadata-row" action="{{ url_for('admin_metadata', meta_scheme_code=row.scheme_code) }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="scheme_code" value="{{ row.scheme_code }}">
           <input type="hidden" name="scheme_name" value="{{ row.scheme_name }}">
           <div class="metadata-title">

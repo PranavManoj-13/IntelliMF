@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Share Your Fund Basket | IntelliMF{% endblock %}
+{% block content %}
+<section class="section-header">
+  <div>
+    <p class="eyebrow">Community survey</p>
+    <h1>What’s in your basket?</h1>
+    <p class="muted">Share the mutual funds you hold to help us understand which funds investors hold together. We only ask for fund names.</p>
+  </div>
+</section>
+
+<div id="public-basket-page" data-submitted="{{ 'true' if submitted else 'false' }}">
+{% if submitted %}
+  <section class="panel submission-success">
+    <span class="success-mark" aria-hidden="true">✓</span>
+    <h2>Basket received</h2>
+    <p>Thank you for sharing. Your basket is included in the investor pattern analysis.</p>
+    <a class="text-link" href="{{ url_for('recommendations') }}">Explore investor patterns {{ arrow() }}</a>
+  </section>
+{% else %}
+  <section class="panel survey-step" aria-labelledby="find-funds">
+    <div class="survey-step-header">
+      <div class="panel-heading">
+        <p class="eyebrow">Step 1</p>
+        <h2 id="find-funds">Find your funds</h2>
+        <p>Search by name or scheme code and select up to 20 funds.</p>
+      </div>
+      <a class="text-link" href="#review-basket">Review basket {{ arrow() }}</a>
+    </div>
+    <form class="search-form" action="{{ url_for('share_basket') }}" method="get" role="search">
+      <label class="sr-only" for="basket-query">Search funds</label>
+      <input id="basket-query" name="q" type="search" maxlength="120" value="{{ query }}" placeholder="Search by fund name or scheme code">
+      <button type="submit">Search</button>
+    </form>
+    {% if results %}
+      <p class="survey-note survey-results-note">
+        {% if results|length == 100 %}Showing the first 100 matches. Refine your search to narrow the list.
+        {% else %}{{ results|length }} matching {{ 'fund' if results|length == 1 else 'funds' }}.
+        {% endif %}
+      </p>
+      <div class="survey-results">
+        {% for scheme in results %}
+          <label class="survey-fund">
+            <input class="survey-select" type="checkbox" name="scheme_codes" value="{{ scheme.scheme_code }}" data-name="{{ scheme.scheme_name }}" form="basket-submit">
+            <span><strong>{{ scheme.scheme_name }}</strong><small>Scheme {{ scheme.scheme_code }}</small></span>
+          </label>
+        {% endfor %}
+      </div>
+    {% elif query %}
+      <p class="muted">No matching funds. Try another name or scheme code.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel survey-review" id="review-basket" aria-labelledby="review-title">
+    <div class="panel-heading">
+      <p class="eyebrow">Step 2</p>
+      <h2 id="review-title">Review and submit</h2>
+      <p>Check your selection before sharing. We combine your basket with other submissions to find recurring fund combinations.</p>
+    </div>
+    <form id="basket-submit" class="stack-form" action="{{ url_for('share_basket') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div id="selected-funds"><p class="muted">Choose funds from the search results.</p></div>
+      <p id="basket-selection-status" class="survey-note" role="status"></p>
+      <button type="submit">Submit my basket {{ arrow() }}</button>
+    </form>
+  </section>
+{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/public-basket.js') }}"></script>{% endblock %}

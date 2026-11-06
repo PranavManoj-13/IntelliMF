@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}Please Try Again | IntelliMF{% endblock %}
+{% block content %}<section class="empty-state"><p class="eyebrow">REQUEST COULD NOT BE COMPLETED</p><h1>Please try again.</h1><p>{{ message }}</p><a class="text-link" href="{{ request.path if request.method == 'GET' else url_for('home') }}">Return to a fresh page {{ arrow() }}</a></section>{% endblock %}

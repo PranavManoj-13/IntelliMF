@@ -84,26 +84,6 @@ class SchemeBrowser:
             else:
                 print("Invalid choice. Please try again.")
 
-    def load_or_fetch_schemes(self):
-        schemes_file = f"{self.data_dir}/all_schemes.csv"
-        
-        if os.path.exists(schemes_file):
-            print(f"Loading schemes from {schemes_file}")
-            self.schemes_df = pd.read_csv(schemes_file)
-        else:
-            print("Fetching all schemes from API...")
-            response = requests.get(f"{self.base_url}/mf")
-            if response.status_code == 200:
-                schemes = response.json()
-                self.schemes_df = pd.DataFrame(schemes)
-                self.schemes_df.to_csv(schemes_file, index=False)
-                print(f"Fetched and saved {len(schemes)} schemes.")
-            else:
-                print("Failed to fetch schemes.")
-                return False
-        
-        return True
-    
     def get_scheme_with_retry(self, scheme_code, max_retries=3):
         for attempt in range(max_retries):
             try:

@@ -1,36 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Home | IntelliMF{% endblock %}
+{% block title %}IntelliMF | A clearer view of your investments{% endblock %}
+{% block body_class %}home-page{% endblock %}
 {% block content %}
-<section class="hero">
-  <div class="hero-copy">
-    <p class="eyebrow">MFAPI-powered analytics</p>
-    <h1>Search mutual funds, simulate SIPs, and discover investor patterns.</h1>
-    <p class="hero-text">
-      Search all available schemes, inspect NAV history, compare SIP frequencies,
-      and explore funds that are frequently bought together.
-    </p>
-    <form class="search-form" action="{{ url_for('search') }}" method="get">
-      <input type="text" name="q" placeholder="Search by fund name, AMC, category, or scheme code" autocomplete="off">
-      <button type="submit">Search Funds</button>
-    </form>
-    <p class="search-hint">{{ total_schemes }} schemes available in the current cache.</p>
-  </div>
-  <div class="hero-panel">
-    <div class="metric-card">
-      <span class="metric-label">Use Cases</span>
-      <strong>Fund research</strong>
-      <p>NAV trends, trailing returns, and scheme-level detail pages.</p>
-    </div>
-    <div class="metric-card">
-      <span class="metric-label">Planning</span>
-      <strong>SIP simulation</strong>
-      <p>Daily valuation uses actual historical NAV and cumulative units held.</p>
-    </div>
-    <div class="metric-card">
-      <span class="metric-label">Insights</span>
-      <strong>FP-Growth</strong>
-      <p>Discover which mutual funds are often purchased together by investors.</p>
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-market-stage" aria-hidden="true"><canvas id="investment-background"></canvas></div>
+  <div class="hero-content container">
+    <h1 id="hero-title">Less guesswork.<br>More <em>perspective.</em></h1>
+    <p class="hero-statement">Understand the fund.<br class="mobile-break"> Find your rhythm. See the patterns.</p>
+    <div class="hero-search-wrap" id="fund-search">
+      <form class="hero-search" action="{{ url_for('search') }}" method="get" role="search">
+        <label class="sr-only" for="hero-query">Search mutual funds by name, fund house, or scheme code</label>
+        <svg class="search-icon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+        <input id="hero-query" type="search" name="q" placeholder="Search funds or scheme codes" required autocomplete="off">
+        <button type="submit">Explore funds {{ arrow() }}</button>
+      </form>
+      <div class="search-suggestions"><span>A place to start</span>{% for term in ['Index', 'Flexi Cap', 'ELSS'] %}<a href="{{ url_for('search', q=term) }}">{{ term }} <span aria-hidden="true">↗</span></a>{% endfor %}</div>
     </div>
   </div>
 </section>
+<section class="research-section container" id="research-tools" aria-labelledby="research-title">
+  <div class="section-heading"><div><p class="eyebrow">YOUR RESEARCH TOOLKIT</p><h2 id="research-title">Look closer.<br>Connect the dots.</h2></div><p>Go from a fund name to a fuller picture.<br>One question at a time.</p></div>
+  <div class="tool-grid">
+    <article class="tool-card">
+      <a class="tool-visual visual-nav" href="#fund-search" aria-label="Search funds to explore NAV history">
+        <svg viewBox="0 0 400 230" fill="none" aria-hidden="true"><defs><pattern id="plot-dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="currentColor" opacity=".18"/></pattern></defs><rect width="400" height="230" fill="url(#plot-dots)"/><path d="M40 185H360M40 45V185" stroke="currentColor" opacity=".25"/><path d="m40 171 28-11 22 6 26-31 26 9 28-30 28 10 24-33 26 9 28-26 25 10 29-40 29 11" stroke="currentColor" stroke-width="2"/><path d="M40 174 358 61" stroke="currentColor" stroke-dasharray="4 6" opacity=".35"/><circle cx="329" cy="55" r="5" fill="currentColor"/><circle cx="329" cy="55" r="12" stroke="currentColor" opacity=".3"/></svg>
+        <span class="visual-index">01 / OBSERVE</span><span class="visual-arrow">{{ arrow() }}</span>
+      </a>
+      <div class="tool-meta">FUND RESEARCH <span>MFAPI</span></div><h3><a href="#fund-search">Start with the fundamentals {{ arrow() }}</a></h3><p>Explore historical NAV, trailing returns, and scheme details to understand how a fund has moved over time.</p><div class="tags"><span>NAV history</span><span>Trailing returns</span></div>
+    </article>
+    <article class="tool-card">
+      <a class="tool-visual visual-sip" href="{{ url_for('search', q='Index') }}" aria-label="Find an index fund to simulate a SIP">
+        <svg viewBox="0 0 400 230" fill="none" aria-hidden="true"><path d="M40 185H360M40 45V185" stroke="currentColor" opacity=".25"/>{% for x in range(65, 350, 34) %}<path d="M{{ x }} 185V{{ 170 - loop.index * 11 }}" stroke="currentColor" stroke-width="12" opacity=".16"/>{% endfor %}<path d="M40 177h35v-14h35v-17h35v-16h35v-19h35V92h35V74h35V55h35V36h35" stroke="currentColor" stroke-width="2"/><path d="M40 182C110 170 135 156 185 126S280 65 360 31" stroke="currentColor" stroke-dasharray="4 6" opacity=".5"/><circle cx="285" cy="55" r="4" fill="currentColor"/></svg>
+        <span class="visual-index">02 / COMPARE</span><span class="visual-arrow">{{ arrow() }}</span>
+      </a>
+      <div class="tool-meta">SIP SIMULATION <span>4 frequencies</span></div><h3><a href="{{ url_for('search', q='Index') }}">Find a rhythm that fits {{ arrow() }}</a></h3><p>Compare daily, weekly, bi-weekly, and monthly SIPs with the same monthly budget over your chosen period.</p><div class="tags"><span>Fixed monthly budget</span><span>Frequency comparison</span></div>
+    </article>
+    <article class="tool-card">
+      <a class="tool-visual visual-patterns" href="{{ url_for('recommendations') }}" aria-label="Explore investor basket patterns">
+        <svg viewBox="0 0 400 230" fill="none" aria-hidden="true"><g stroke="currentColor" opacity=".35"><path d="m90 69 102-27 102 43-17 87-94 23-93-61V69l187 103M192 42l-9 153M90 134l204-49M90 69l93 126 111-110M90 134l102-92 85 130"/></g><g fill="currentColor"><circle cx="90" cy="69" r="5"/><circle cx="192" cy="42" r="7"/><circle cx="294" cy="85" r="5"/><circle cx="277" cy="172" r="7"/><circle cx="183" cy="195" r="5"/><circle cx="90" cy="134" r="7"/></g><g stroke="currentColor" opacity=".25"><circle cx="192" cy="42" r="17"/><circle cx="277" cy="172" r="17"/><circle cx="90" cy="134" r="17"/></g></svg>
+        <span class="visual-index">03 / DISCOVER</span><span class="visual-arrow">{{ arrow() }}</span>
+      </a>
+      <div class="tool-meta">INVESTOR PATTERNS <span>FP-Growth</span></div><h3><a href="{{ url_for('recommendations') }}">See what connects {{ arrow() }}</a></h3><p>Discover fund combinations that recur across survey-collected investor baskets, with support, confidence, and lift.</p><div class="tags"><span>Frequent itemsets</span><span>Association rules</span></div>
+    </article>
+  </div>
+</section>
+<section class="perspective-strip"><div class="container"><p class="eyebrow">A LITTLE CONTEXT GOES A LONG WAY</p><h2>Data gives you the picture.<br><em>You bring the perspective.</em></h2><a class="text-link" href="#fund-search">Find your first fund {{ arrow() }}</a></div></section>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/hero.js') }}"></script>{% endblock %}

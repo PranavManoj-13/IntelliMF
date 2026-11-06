@@ -17,14 +17,14 @@ def ImputeNAV(file_path):
     
     missing_before = df['nav'].isna().sum()
     total_records = len(df)
-    missing_percentage = (missing_before / total_records) * 100
+    missing_percentage = (missing_before / total_records) * 100 if total_records else 0
     
     print(f"\nFile: {os.path.basename(file_path)}")
     print(f"Total Records: {total_records}")
     print(f"Missing NAV values: {missing_before} ({missing_percentage:.2f}%)")
     
-    df['nav'] = df['nav'].fillna(method='ffill')
-    df['nav'] = df['nav'].fillna(method='bfill')
+    df['nav'] = df['nav'].ffill()
+    df['nav'] = df['nav'].bfill()
     
     missing_after = df['nav'].isna().sum()
     print(f"Missing NAV after imputation: {missing_after}")
@@ -35,19 +35,8 @@ def ImputeNAV(file_path):
 # STEP 2: Remove Specific Columns from Multiple CSV Files
 # ============================================================================
 
-def RemoveCSVCols(file_path, columns_to_remove):
-
-    df = pd.read_csv(file_path)
-    
-    existing_columns = [col for col in columns_to_remove if col in df.columns]
-    
-    if existing_columns:
-        print(f"\nRemoving columns {existing_columns} from {os.path.basename(file_path)}")
-        df = df.drop(columns=existing_columns)
-    else:
-        print(f"\nNo matching columns to remove in {os.path.basename(file_path)}.")
-    
-    return df
+def RemoveCSVCols(frame, columns_to_remove):
+    return frame.drop(columns=columns_to_remove, errors="ignore").copy()
 
 # ============================================================================
 # STEP 3: Process All CSV Files in a Directory
@@ -60,7 +49,7 @@ def ProcessAllCSVFiles(input_dir, output_dir=None):
     
     columns_to_remove = ['scheme_name', 'fund_house']
     
-    csv_files = glob(os.path.join(input_dir, '*.csv'))
+    csv_files = glob(os.path.join(input_dir, 'scheme_*.csv'))
     
     if not csv_files:
         print(f"No CSV files found in {input_dir}")
@@ -69,7 +58,6 @@ def ProcessAllCSVFiles(input_dir, output_dir=None):
     print(f"Found {len(csv_files)} CSV files to process.")
     print("=" * 70)
     
-    total_missing = 0
     total_records = 0
     files_processed = 0
     
@@ -79,14 +67,14 @@ def ProcessAllCSVFiles(input_dir, output_dir=None):
             
             total_records += len(df)
             
-            df = RemoveCSVCols(file_path, columns_to_remove)
+            df = RemoveCSVCols(df, columns_to_remove)
             
             if output_dir:
                 output_path = os.path.join(output_dir, os.path.basename(file_path))
             else:
                 output_path = file_path
             
-            df.to_csv(output_path, index=False)
+            df.to_csv(output_path, index=False, date_format="%d-%m-%Y")
             print(f"Saved to: {output_path}.")
             
             files_processed += 1
@@ -97,7 +85,7 @@ def ProcessAllCSVFiles(input_dir, output_dir=None):
     print("\n" + "=" * 70)
     print("PROCESSING SUMMARY")
     print("=" * 70)
-    print(f"Files processed: {files_processed}/{len(csv_files)-1}")
+    print(f"Files processed: {files_processed}/{len(csv_files)}")
     print(f"Total records processed: {total_records}")
     print("=" * 70)
 
@@ -107,7 +95,7 @@ def ProcessAllCSVFiles(input_dir, output_dir=None):
 
 def generateMissingValReport(input_dir):
 
-    csv_files = glob(os.path.join(input_dir, '*.csv'))
+    csv_files = glob(os.path.join(input_dir, 'scheme_*.csv'))
 
     report_data = []
     

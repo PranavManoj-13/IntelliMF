@@ -10,16 +10,11 @@
   <a class="inline-link" href="{{ url_for('search', q=details.scheme_name) }}">Back to search results</a>
 </section>
 
-<section class="metric-grid">
+<section class="metric-grid fund-metrics">
   <div class="metric-card">
     <span class="metric-label">Current NAV</span>
     <strong>{{ "%.4f"|format(details.current_nav) }}</strong>
     <p>Latest MFAPI NAV: {{ details.current_date.strftime("%d %b %Y") }}</p>
-  </div>
-  <div class="metric-card">
-    <span class="metric-label">Scheme Code</span>
-    <strong>{{ details.scheme_code }}</strong>
-    <p>Coverage extends to {{ details.coverage_date.strftime("%d %b %Y") }} for charting and SIP continuity.</p>
   </div>
   <div class="metric-card accent-card">
     <span class="metric-label">Optimal SIP Frequency</span>
@@ -109,7 +104,7 @@
   <form class="controls-grid" action="{{ url_for('fund_detail', scheme_code=details.scheme_code) }}" method="get">
     <label>
       Monthly SIP Budget
-      <input type="number" name="amount" min="100" step="100" value="{{ selected_amount }}">
+      <input type="number" name="amount" min="0.01" max="1000000000" step="any" required value="{{ selected_amount }}">
     </label>
     <label>
       SIP Frequency
@@ -130,6 +125,7 @@
     <button type="submit">Recalculate SIP</button>
   </form>
 
+  {% if sip_result.summary %}
   <div class="metric-grid">
     <div class="metric-card">
       <span class="metric-label">Invested</span>
@@ -147,6 +143,8 @@
       <p>Absolute return: {{ sip_result.summary.absolute_return }}</p>
     </div>
   </div>
+
+  {% else %}<p class="muted">No SIP executions are available for the selected dates.</p>{% endif %}
 
   <div class="analysis-grid">
     <div class="panel inset-panel">
@@ -186,41 +184,6 @@
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
-
-  <div class="panel inset-panel">
-    <div class="panel-heading">
-      <h2>Investment Executions</h2>
-      <p>Scheduled date vs actual execution date aligned to next available NAV.</p>
-    </div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Scheduled</th>
-            <th>Executed</th>
-            <th>Month</th>
-            <th>NAV</th>
-            <th>Amount</th>
-            <th>Units Bought</th>
-            <th>Cumulative Units</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in sip_result.investments %}
-            <tr>
-              <td>{{ row.scheduled_date }}</td>
-              <td>{{ row.execution_date }}</td>
-              <td>{{ row.month_bucket }}</td>
-              <td>{{ row.nav }}</td>
-              <td>{{ row.investment_amount }}</td>
-              <td>{{ row.units_bought }}</td>
-              <td>{{ row.cumulative_units }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
     </div>
   </div>
 </section>

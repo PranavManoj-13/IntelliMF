@@ -12,7 +12,8 @@ def CollectSpecificSchemes():
     
     collector = SchemeBrowser()
     
-    collector.load_or_fetch_schemes()
+    if not collector.fetchAllSchemes():
+        return
     scheme_names_lookup = dict(zip(collector.schemes_df['schemeCode'].astype(str), collector.schemes_df['schemeName']))
     
     specific_schemes_input = input("\nEnter scheme codes to collect (comma-separated): ").strip()
